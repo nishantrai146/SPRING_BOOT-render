@@ -11,5 +11,7 @@ public class CreateUserRequest {
     private String role;
     private String branch;
     private String department;
+    private Long companyId;
     private List<PermissionDto> permissions;
+    private List<Long> branchIds;
 }

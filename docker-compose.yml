@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: Nishant@70
+      MYSQL_DATABASE: ims_backend
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - ims-network
+
+  ims_backend:
+    build: .
+    container_name: ims_backend
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    networks:
+      - ims-network
+
+volumes:
+  mysql-data:
+
+networks:
+  ims-network:

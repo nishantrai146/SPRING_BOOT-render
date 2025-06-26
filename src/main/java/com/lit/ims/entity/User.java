@@ -23,7 +23,6 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    private String branch;
     private String department;
     
     @Enumerated(EnumType.STRING)
@@ -32,8 +31,18 @@ public class User {
     private String lastLoginIp;
     private LocalDateTime lastLoginDateTime;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
     @OneToMany(mappedBy = "user",cascade = CascadeType.ALL)
     private List<PagePermission> permissions;
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_branch",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "branch_id")
+    )
+    private List<Branch> branches;
 }

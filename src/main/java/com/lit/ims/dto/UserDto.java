@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -18,9 +19,11 @@ public class UserDto {
     private String username;
     private String email;
     private Role role;
-    private String branch;
     private String department;
     private Status status;
     private LocalDateTime lastLoginDateTime;
     private String lastLoginIp;
+    private Long companyId;
+    private String companyName;
+    private List<Long> branchIds;
 } 

@@ -7,8 +7,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 public class TransactionLogService {
@@ -44,10 +47,13 @@ public class TransactionLogService {
     }
 
     private String getClientIp() {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip != null && !ip.isBlank() && !"unknown".equalsIgnoreCase(ip)) {
-            return ip.split(",")[0].trim();
+        try {
+            return Optional.ofNullable(RequestContextHolder.getRequestAttributes())
+                    .map(attrs -> ((ServletRequestAttributes) attrs).getRequest())
+                    .map(HttpServletRequest::getRemoteAddr)
+                    .orElse("SYSTEM");  // Fallback if no HTTP request (like during startup)
+        } catch (Exception e) {
+            return "SYSTEM"; // Default IP for startup
         }
-        return request.getRemoteAddr();
     }
 }

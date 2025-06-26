@@ -3,8 +3,7 @@ package com.lit.ims.dto;
 import lombok.Data;
 
 @Data
-public class LoginRequest {
+public class BranchSelectionRequest {
     private String username;
-    private String password;
-
+    private Long branchId;
 }

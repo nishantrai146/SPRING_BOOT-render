@@ -12,11 +12,10 @@ public class LoginLogService {
     @Autowired
     private LogInRepository logInRepository;
 
-    public void log(String username, String ipAddress, String branch, String status) {
+    public void log(String username, String ipAddress, String status) {
         LogInLog log = new LogInLog();
         log.setUsername(username);
         log.setIpAddress(ipAddress);
-        log.setBranch(branch);
         log.setStatus(status);
         log.setTimestamp(LocalDateTime.now());
         System.out.println("Saving login log: " + log);
