@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/group")
@@ -20,76 +21,68 @@ public class GroupMasterController {
 
     // ✅ Save
     @PostMapping("/save")
-    public ResponseEntity<?> save(@RequestBody GroupMasterDTO dto) {
-        try {
-            GroupMasterDTO saved = service.save(dto);
+    public ResponseEntity<?> save(@RequestBody GroupMasterDTO dto,
+                                  @RequestAttribute("companyId") Long companyId,
+                                  @RequestAttribute("branchId") Long branchId) {
+        GroupMasterDTO saved = service.save(dto, companyId, branchId);
 
-            logService.log(
-                    "CREATE",
-                    "GroupMaster",
-                    saved.getId(),
-                    "Group created with TRNO: " + saved.getTrno()
-            );
+        logService.log("CREATE", "GroupMaster", saved.getId(),
+                "Group created with TRNO: " + saved.getTrno());
 
-            return ResponseEntity.ok(saved);
-        } catch (RuntimeException ex) {
-            return ResponseEntity.badRequest().body(ex.getMessage());
-        }
+        return ResponseEntity.ok(saved);
     }
 
     // ✅ Update
     @PutMapping("/update/{id}")
-    public ResponseEntity<GroupMasterDTO> update(@PathVariable Long id, @RequestBody GroupMasterDTO dto) {
-        GroupMasterDTO updated = service.update(id, dto);
+    public ResponseEntity<?> update(@PathVariable Long id,
+                                    @RequestBody GroupMasterDTO dto,
+                                    @RequestAttribute("companyId") Long companyId,
+                                    @RequestAttribute("branchId") Long branchId) {
+        GroupMasterDTO updated = service.update(id, dto, companyId, branchId);
 
-        logService.log(
-                "UPDATE",
-                "GroupMaster",
-                id,
-                "Group updated to name: " + updated.getName()
-        );
+        logService.log("UPDATE", "GroupMaster", id,
+                "Group updated to name: " + updated.getName());
 
         return ResponseEntity.ok(updated);
     }
 
-    // ✅ Get one
+    // ✅ Get One
     @GetMapping("/{id}")
-    public ResponseEntity<GroupMasterDTO> getOne(@PathVariable Long id) {
-        return ResponseEntity.ok(service.getOne(id));
+    public ResponseEntity<?> getOne(@PathVariable Long id,
+                                    @RequestAttribute("companyId") Long companyId,
+                                    @RequestAttribute("branchId") Long branchId) {
+        return ResponseEntity.ok(service.getOne(id, companyId, branchId));
     }
 
-    // ✅ Get all
+    // ✅ Get All
     @GetMapping("/all")
-    public ResponseEntity<List<GroupMasterDTO>> getAll() {
-        return ResponseEntity.ok(service.getAll());
+    public ResponseEntity<?> getAll(@RequestAttribute("companyId") Long companyId,
+                                    @RequestAttribute("branchId") Long branchId) {
+        List<GroupMasterDTO> list = service.getAll(companyId, branchId);
+        return ResponseEntity.ok(Map.of("groups", list));
     }
 
-    // ✅ Delete one
+    // ✅ Delete
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<String> delete(@PathVariable Long id) {
-        service.delete(id);
+    public ResponseEntity<?> delete(@PathVariable Long id,
+                                    @RequestAttribute("companyId") Long companyId,
+                                    @RequestAttribute("branchId") Long branchId) {
+        service.delete(id, companyId, branchId);
 
-        logService.log(
-                "DELETE",
-                "GroupMaster",
-                id,
-                "Group deleted"
-        );
+        logService.log("DELETE", "GroupMaster", id, "Group deleted");
 
         return ResponseEntity.ok("Deleted Successfully");
     }
 
-    // ✅ Delete multiple
+    // ✅ Delete Multiple
     @DeleteMapping("/delete-multiple")
-    public ResponseEntity<String> delete(@RequestBody List<Long> ids) {
-        service.deleteMultiple(ids);
+    public ResponseEntity<?> deleteMultiple(@RequestBody List<Long> ids,
+                                            @RequestAttribute("companyId") Long companyId,
+                                            @RequestAttribute("branchId") Long branchId) {
+        service.deleteMultiple(ids, companyId, branchId);
 
-        logService.log(
-                "DELETE",
-                "GroupMaster",
-                null, // Multiple IDs — optionally store as null or as CSV in details
-                "Groups deleted with IDs: " + ids
-        );
+        logService.log("DELETE", "GroupMaster", null,
+                "Groups deleted with IDs: " + ids);
 
         return ResponseEntity.ok("Deleted Successfully");
     }

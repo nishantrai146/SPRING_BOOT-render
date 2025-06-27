@@ -1,25 +1,31 @@
 package com.lit.ims.entity;
 
-
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-@Data
 @Entity
+@Table(name = "group_master")
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name="group_master")
 @Builder
 public class GroupMaster {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(unique = true)
+
+    @Column(nullable = false, unique = true)
     private String trno;
-    @Column(nullable = false,unique = true)
+
+    @Column(nullable = false, unique = true)
     private String name;
+
     private String status;
+
+    @Column(nullable = false)
+    private Long companyId;
+
+    @Column(nullable = false)
+    private Long branchId;
 }
