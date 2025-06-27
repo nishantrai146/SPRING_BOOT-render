@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PartMasterDT0 {
+public class PartMasterDTO {
     private Long id;
     private String code;
     private String name;

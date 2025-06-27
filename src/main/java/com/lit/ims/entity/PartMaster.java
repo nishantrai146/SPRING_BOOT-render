@@ -1,22 +1,21 @@
 package com.lit.ims.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-@Data
 @Entity
-@AllArgsConstructor
+@Table(name = "part_master")
+@Data
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
-@Table(name = "part_master", uniqueConstraints = @UniqueConstraint(columnNames = "code"))
 public class PartMaster {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(unique = true)
+
+    @Column(nullable = false, unique = true)
     private String code;
 
     @Column(nullable = false)
@@ -24,8 +23,13 @@ public class PartMaster {
 
     @Column(nullable = false)
     private String uom;
+
     @Column(nullable = false)
     private String status;
 
+    @Column(nullable = false)
+    private Long companyId;
 
+    @Column(nullable = false)
+    private Long branchId;
 }
