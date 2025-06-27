@@ -31,7 +31,7 @@ public class JwtService {
                 .claim("userId", userId)
                 .claim("companyId", companyId)
                 .claim("branchId", branchId)
-                .claim("role", role)
+                .claim("role", "ROLE_" + role)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getKey())

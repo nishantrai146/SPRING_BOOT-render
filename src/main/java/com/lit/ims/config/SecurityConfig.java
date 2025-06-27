@@ -30,6 +30,7 @@ public class SecurityConfig {
                                 "/api/auth/logout",
                                 "/api/auth/select-branch" // ✅ Make public
                         ).permitAll()
+                        .requestMatchers("/api/branch/**").hasAuthority("ROLE_OWNER")
                         .requestMatchers("/api/users/create").hasAuthority("ROLE_OWNER")
                         .requestMatchers("/api/items/**").hasAnyAuthority("ROLE_OWNER", "ROLE_ADMIN")
                         .anyRequest().authenticated()
@@ -42,7 +43,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5175")); // Frontend origin
+        configuration.setAllowedOrigins(List.of("http://localhost:5173")); // Frontend origin
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true); // Allow cookies, JWT in headers

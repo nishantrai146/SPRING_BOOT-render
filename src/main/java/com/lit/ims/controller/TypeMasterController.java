@@ -1,7 +1,5 @@
 package com.lit.ims.controller;
 
-
-
 import com.lit.ims.dto.TypeMasterDTO;
 import com.lit.ims.service.TransactionLogService;
 import com.lit.ims.service.TypeService;
@@ -10,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/type")
@@ -20,11 +19,12 @@ public class TypeMasterController {
     private final TypeService service;
     private final TransactionLogService logService;
 
-    // ✅ Save
     @PostMapping("/save")
-    public ResponseEntity<?> save(@RequestBody TypeMasterDTO dto) {
+    public ResponseEntity<?> save(@RequestBody TypeMasterDTO dto,
+                                  @RequestAttribute("companyId") Long companyId,
+                                  @RequestAttribute("branchId") Long branchId) {
         try {
-            TypeMasterDTO saved = service.save(dto);
+            TypeMasterDTO saved = service.save(dto, companyId, branchId);
 
             logService.log(
                     "CREATE",
@@ -39,10 +39,12 @@ public class TypeMasterController {
         }
     }
 
-    // ✅ Update
     @PutMapping("/update/{id}")
-    public ResponseEntity<TypeMasterDTO> update(@PathVariable Long id, @RequestBody TypeMasterDTO dto) {
-        TypeMasterDTO updated = service.update(id, dto);
+    public ResponseEntity<?> update(@PathVariable Long id,
+                                    @RequestBody TypeMasterDTO dto,
+                                    @RequestAttribute("companyId") Long companyId,
+                                    @RequestAttribute("branchId") Long branchId) {
+        TypeMasterDTO updated = service.update(id, dto, companyId, branchId);
 
         logService.log(
                 "UPDATE",
@@ -54,19 +56,21 @@ public class TypeMasterController {
         return ResponseEntity.ok(updated);
     }
 
-    // ✅ Get one
     @GetMapping("/{id}")
     public ResponseEntity<TypeMasterDTO> getOne(@PathVariable Long id) {
         return ResponseEntity.ok(service.getOne(id));
     }
 
-    // ✅ Get all
     @GetMapping("/all")
-    public ResponseEntity<List<TypeMasterDTO>> getAll() {
-        return ResponseEntity.ok(service.getAll());
+    public ResponseEntity<?> getAll(@RequestAttribute("companyId") Long companyId,
+                                    @RequestAttribute("branchId") Long branchId) {
+        List<TypeMasterDTO> list = service.getAll(companyId, branchId);
+
+        return ResponseEntity.ok(
+                Map.of("types", list)  // ✅ Key name 'types'
+        );
     }
 
-    // ✅ Delete one
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<String> delete(@PathVariable Long id) {
         String trno = service.getTrnoById(id);
@@ -76,23 +80,22 @@ public class TypeMasterController {
                 "DELETE",
                 "TypeMaster",
                 id,
-                "Type deleted with trno: "+trno
+                "Type deleted with TRNO: " + trno
         );
 
         return ResponseEntity.ok("Deleted Successfully");
     }
 
-    // ✅ Delete multiple
-    @DeleteMapping("/delete-multiple")
-    public ResponseEntity<String> delete(@RequestBody List<Long> ids) {
-        List<String> trnos=service.getTrnosByIds(ids);
+    @PostMapping("/delete-multiple")
+    public ResponseEntity<String> deleteMultiple(@RequestBody List<Long> ids) {
+        List<String> trnos = service.getTrnosByIds(ids);
         service.deleteMultiple(ids);
 
         logService.log(
                 "DELETE",
                 "TypeMaster",
-                null, // Multiple IDs — optionally store as null or as CSV in details
-                "Type deleted with IDs: " + trnos
+                null,
+                "Types deleted with TRNOs: " + trnos
         );
 
         return ResponseEntity.ok("Deleted Successfully");

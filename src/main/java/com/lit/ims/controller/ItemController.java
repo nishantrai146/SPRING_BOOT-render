@@ -3,97 +3,94 @@ package com.lit.ims.controller;
 import com.lit.ims.dto.ItemDTO;
 import com.lit.ims.entity.Item;
 import com.lit.ims.service.ItemService;
-import com.lit.ims.service.TransactionLogService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/items")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class ItemController {
 
-    @Autowired
-    private ItemService itemService;
-
-    @Autowired
-    private TransactionLogService logService;
+    private final ItemService itemService;
 
     // ✅ Create Item
     @PostMapping("/add")
-    public Item addItem(@RequestBody ItemDTO request) {
-        Item saved = itemService.saveItem(request);
-
-        logService.log(
-                "CREATE",
-                "Item",
-                saved.getId(),
-                "Item created with code: " + saved.getCode()
-        );
-
-        return saved;
+    public ResponseEntity<?> addItem(@RequestBody ItemDTO request,
+                                     @RequestAttribute("companyId") Long companyId,
+                                     @RequestAttribute("branchId") Long branchId) {
+        try {
+            Item saved = itemService.saveItem(request, companyId, branchId);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Item Added Successfully",
+                    "item", saved
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", e.getMessage()
+            ));
+        }
     }
-
     // ✅ Get All Items
     @GetMapping("/all")
-    public List<Item> getItem() {
-        return itemService.getAllItem();
+    public ResponseEntity<?> getAllItems(@RequestAttribute("companyId") Long companyId,
+                                         @RequestAttribute("branchId") Long branchId) {
+        List<Item> items = itemService.getAllItems(companyId, branchId);
+        return ResponseEntity.ok(Map.of("items", items));
     }
+
 
     // ✅ Get Item by ID
     @GetMapping("/{id}")
-    public Optional<Item> getItemById(@PathVariable Long id) {
-        return itemService.getItemById(id);
+    public ResponseEntity<Item> getItemById(@PathVariable Long id,
+                                            @RequestAttribute("companyId") Long companyId,
+                                            @RequestAttribute("branchId") Long branchId) {
+        return itemService.getItemById(id, companyId, branchId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
+
+
 
     // ✅ Update Item
     @PutMapping("/update/{id}")
-    public Optional<Item> updateItem(@PathVariable Long id, @RequestBody ItemDTO dto) {
-        Optional<Item> updated = itemService.updateItem(id, dto);
+    public ResponseEntity<String> updateItem(@PathVariable Long id,
+                                             @RequestBody ItemDTO dto,
+                                             @RequestAttribute("companyId") Long companyId,
+                                             @RequestAttribute("branchId") Long branchId) {
+        Optional<Item> updated = itemService.updateItem(id, dto, companyId, branchId);
 
-        updated.ifPresent(item -> logService.log(
-                "UPDATE",
-                "Item",
-                id,
-                "Item updated with new name: " + item.getName()
-        ));
-
-        return updated;
+        if (updated.isPresent()) {
+            return ResponseEntity.ok("Item Updated Successfully");
+        } else {
+            return ResponseEntity.badRequest().body("Item Not Found");
+        }
     }
 
     // ✅ Delete Single Item
     @DeleteMapping("/delete/{id}")
-    public String deleteItem(@PathVariable Long id) {
-        boolean deleted = itemService.deleteItem(id);
-
+    public ResponseEntity<?> deleteItem(@PathVariable Long id,
+                                        @RequestAttribute("companyId") Long companyId,
+                                        @RequestAttribute("branchId") Long branchId) {
+        boolean deleted = itemService.deleteItem(id, companyId, branchId);
         if (deleted) {
-            logService.log(
-                    "DELETE",
-                    "Item",
-                    id,
-                    "Item deleted"
-            );
-            return "Item deleted Successfully";
+            return ResponseEntity.ok("Item Deleted Successfully");
         } else {
-            return "Item Not Found!";
+            return ResponseEntity.badRequest().body("Item Not Found");
         }
     }
 
     // ✅ Delete Multiple Items
     @DeleteMapping("/delete-multiple")
-    public String deleteMultiple(@RequestBody List<Long> ids) {
-        itemService.deleteMultipleItem(ids);
-
-        // 🔥 Logging each deletion separately (Recommended)
-        logService.log(
-                "DELETE",
-                "item",
-                null,
-                "Item deleted with IDs: " + ids
-        );
-
-        return "Items Deleted Successfully";
+    public ResponseEntity<?> deleteMultipleItems(@RequestBody List<Long> ids,
+                                                 @RequestAttribute("companyId") Long companyId,
+                                                 @RequestAttribute("branchId") Long branchId) {
+        itemService.deleteMultipleItems(ids, companyId, branchId);
+        return ResponseEntity.ok("Items Deleted Successfully");
     }
 }

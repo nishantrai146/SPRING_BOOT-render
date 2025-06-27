@@ -1,18 +1,14 @@
 package com.lit.ims.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class TypeMasterDTO {
-    private long id;
+    private Long id;
     private String trno;
     private String name;
     private String status;
-
 }

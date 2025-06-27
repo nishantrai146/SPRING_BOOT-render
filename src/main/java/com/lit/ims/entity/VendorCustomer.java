@@ -24,4 +24,9 @@ public class VendorCustomer {
     private String state;
     private String pincode;
     private String status;
+    @Column(name = "company_id", nullable = false)
+    private Long companyId;
+
+    @Column(name = "branch_id", nullable = false)
+    private Long branchId;
 }

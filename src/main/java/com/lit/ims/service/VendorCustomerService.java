@@ -17,7 +17,8 @@ public class VendorCustomerService {
     @Autowired
     private TransactionLogService logService;
 
-    public VendorCustomer add(VendorCustomerDTO dto) {
+    // ✅ Create
+    public VendorCustomer add(VendorCustomerDTO dto, Long companyId, Long branchId) {
         VendorCustomer vc = new VendorCustomer();
         vc.setType(dto.getType());
         vc.setName(dto.getName());
@@ -28,25 +29,33 @@ public class VendorCustomerService {
         vc.setAddress(dto.getAddress());
         vc.setPincode(dto.getPincode());
         vc.setStatus(dto.getStatus());
+        vc.setCompanyId(companyId);
+        vc.setBranchId(branchId);
 
         VendorCustomer saved = repository.save(vc);
 
-        // ✅ Log creation
-        logService.log("CREATE", "VendorCustomer", saved.getId(), "Created " + saved.getType() + ": " + saved.getName());
+        logService.log("CREATE", "VendorCustomer", saved.getId(),
+                "Created " + saved.getType() + ": " + saved.getName());
 
         return saved;
     }
 
-    public List<VendorCustomer> getAll() {
-        return repository.findAll();
+    // ✅ Get all for company/branch
+    public List<VendorCustomer> getAll(Long companyId, Long branchId) {
+        return repository.findByCompanyIdAndBranchId(companyId, branchId);
     }
 
-    public VendorCustomer getById(Long id) {
-        return repository.findById(id).orElse(null);
+    // ✅ Get by ID (company/branch enforced)
+    public VendorCustomer getById(Long id, Long companyId, Long branchId) {
+        return repository.findById(id)
+                .filter(vc -> vc.getCompanyId().equals(companyId) && vc.getBranchId().equals(branchId))
+                .orElseThrow(() -> new RuntimeException("Vendor/Customer not found"));
     }
 
-    public VendorCustomer update(Long id, VendorCustomerDTO dto) {
-        VendorCustomer vc = repository.findById(id).orElseThrow();
+    // ✅ Update (company/branch enforced)
+    public VendorCustomer update(Long id, VendorCustomerDTO dto, Long companyId, Long branchId) {
+        VendorCustomer vc = getById(id, companyId, branchId);
+
         vc.setType(dto.getType());
         vc.setName(dto.getName());
         vc.setMobile(dto.getMobile());
@@ -59,25 +68,32 @@ public class VendorCustomerService {
 
         VendorCustomer updated = repository.save(vc);
 
-        // ✅ Log update
-        logService.log("UPDATE", "VendorCustomer", updated.getId(), "Updated " + updated.getType() + ": " + updated.getName());
+        logService.log("UPDATE", "VendorCustomer", updated.getId(),
+                "Updated " + updated.getType() + ": " + updated.getName());
 
         return updated;
     }
 
-    public void delete(Long id) {
-        repository.deleteById(id);
+    // ✅ Delete (company/branch enforced)
+    public void delete(Long id, Long companyId, Long branchId) {
+        VendorCustomer vc = getById(id, companyId, branchId);
+        repository.delete(vc);
 
-        // ✅ Log deletion
-        logService.log("DELETE", "VendorCustomer", id, "Deleted Vendor/Customer with ID: " + id);
+        logService.log("DELETE", "VendorCustomer", id,
+                "Deleted Vendor/Customer with ID: " + id);
     }
 
-    public void deleteMultiple(List<Long> ids) {
-        repository.deleteAllById(ids);
+    // ✅ Delete multiple (company/branch enforced)
+    public void deleteMultiple(List<Long> ids, Long companyId, Long branchId) {
+        List<VendorCustomer> customers = repository.findAllById(ids).stream()
+                .filter(vc -> vc.getCompanyId().equals(companyId) && vc.getBranchId().equals(branchId))
+                .toList();
 
-        // ✅ Log each deletion
-        for (Long id : ids) {
-            logService.log("DELETE", "VendorCustomer", id, "Deleted Vendor/Customer with ID: " + id);
+        repository.deleteAll(customers);
+
+        for (VendorCustomer vc : customers) {
+            logService.log("DELETE", "VendorCustomer", vc.getId(),
+                    "Deleted Vendor/Customer with ID: " + vc.getId());
         }
     }
 }

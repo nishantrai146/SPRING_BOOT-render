@@ -6,8 +6,7 @@ import com.lit.ims.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -17,10 +16,12 @@ public class WarehouseService {
     private final WarehouseRepository warehouseRepository;
     private final TransactionLogService logService;
 
-    private String generateNextTrno() {
+    // 🔥 Generate TRNO
+    private String generateNextTrno(Long companyId, Long branchId) {
         long timestamp = System.currentTimeMillis();
         int nextSequence = 1;
-        Optional<Warehouse> last = warehouseRepository.findTopByOrderByIdDesc();
+        Optional<Warehouse> last = warehouseRepository.findTopByCompanyIdAndBranchIdOrderByIdDesc(companyId, branchId);
+
         if (last.isPresent()) {
             String lastTrno = last.get().getTrno();
             String lastSeq = lastTrno.substring(lastTrno.length() - 3);
@@ -31,11 +32,16 @@ public class WarehouseService {
         return "WH" + timestamp + String.format("%03d", nextSequence);
     }
 
-    public WarehouseDTO saveWarehouse(Warehouse warehouse) {
-        if (warehouseRepository.existsByCode(warehouse.getCode())) {
+    // ✅ Save
+    public WarehouseDTO saveWarehouse(Warehouse warehouse, Long companyId, Long branchId) {
+        if (warehouseRepository.existsByCodeAndCompanyIdAndBranchId(warehouse.getCode(), companyId, branchId)) {
             throw new RuntimeException("Code '" + warehouse.getCode() + "' already exists.");
         }
-        warehouse.setTrno(generateNextTrno());
+
+        warehouse.setCompanyId(companyId);
+        warehouse.setBranchId(branchId);
+        warehouse.setTrno(generateNextTrno(companyId, branchId));
+
         Warehouse saved = warehouseRepository.save(warehouse);
 
         logService.log(
@@ -48,18 +54,20 @@ public class WarehouseService {
         return toDTO(saved);
     }
 
-    public WarehouseDTO updateWarehouse(Long id, Warehouse updated) {
-        Warehouse existing = warehouseRepository.findById(id)
+    // ✅ Update
+    public WarehouseDTO updateWarehouse(Long id, Warehouse updated, Long companyId, Long branchId) {
+        Warehouse existing = warehouseRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
                 .orElseThrow(() -> new RuntimeException("Warehouse not found"));
 
         if (!existing.getCode().equals(updated.getCode()) &&
-                warehouseRepository.existsByCode(updated.getCode())) {
+                warehouseRepository.existsByCodeAndCompanyIdAndBranchId(updated.getCode(), companyId, branchId)) {
             throw new RuntimeException("Code '" + updated.getCode() + "' already exists.");
         }
 
         existing.setCode(updated.getCode());
         existing.setName(updated.getName());
         existing.setStatus(updated.getStatus());
+
         Warehouse saved = warehouseRepository.save(existing);
 
         logService.log(
@@ -72,19 +80,22 @@ public class WarehouseService {
         return toDTO(saved);
     }
 
-    public List<WarehouseDTO> getAllWarehouses() {
-        return warehouseRepository.findAll()
+    // ✅ Get All
+    public List<WarehouseDTO> getAllWarehouses(Long companyId, Long branchId) {
+        return warehouseRepository.findAllByCompanyIdAndBranchId(companyId, branchId)
                 .stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
-    public Optional<Warehouse> getWarehouseById(Long id) {
-        return warehouseRepository.findById(id);
+    // ✅ Get By ID
+    public Optional<Warehouse> getWarehouseById(Long id, Long companyId, Long branchId) {
+        return warehouseRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId);
     }
 
-    public boolean deleteWarehouse(Long id) {
-        Optional<Warehouse> existing = warehouseRepository.findById(id);
+    // ✅ Delete
+    public boolean deleteWarehouse(Long id, Long companyId, Long branchId) {
+        Optional<Warehouse> existing = warehouseRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId);
         if (existing.isPresent()) {
             warehouseRepository.deleteById(id);
 
@@ -100,9 +111,15 @@ public class WarehouseService {
         return false;
     }
 
-    public void deleteMultipleWarehouses(List<Long> ids) {
-        List<Warehouse> warehouses = warehouseRepository.findAllById(ids);
-        warehouseRepository.deleteAllById(ids);
+    // ✅ Delete Multiple
+    public void deleteMultipleWarehouses(List<Long> ids, Long companyId, Long branchId) {
+        List<Warehouse> warehouses = ids.stream()
+                .map(id -> warehouseRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+
+        warehouseRepository.deleteAll(warehouses);
 
         for (Warehouse w : warehouses) {
             logService.log(
@@ -114,7 +131,8 @@ public class WarehouseService {
         }
     }
 
-    private WarehouseDTO toDTO(Warehouse warehouse) {
+    // ✅ Convert Entity to DTO
+    public WarehouseDTO toDTO(Warehouse warehouse) {
         return WarehouseDTO.builder()
                 .id(warehouse.getId())
                 .trno(warehouse.getTrno())

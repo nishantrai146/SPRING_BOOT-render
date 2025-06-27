@@ -1,17 +1,13 @@
 package com.lit.ims.entity;
 
-
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
-@Entity
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Entity
 @Table(name = "item_master")
 public class Item {
     @Id
@@ -20,8 +16,10 @@ public class Item {
 
     @Column(nullable = false)
     private String name;
-    @Column(nullable = false)
+
+    @Column(nullable = false, unique = true)
     private String code;
+
     private String uom;
     private String type;
     private String barcode;
@@ -33,8 +31,10 @@ public class Item {
     private Double price;
     private Integer stQty;
     private Integer life;
-    @Column(name = "company_id" ,nullable = false)
+
+    @Column(name = "company_id", nullable = false)
     private Long companyId;
-    @Column(name="branch_id",nullable = false)
+
+    @Column(name = "branch_id", nullable = false)
     private Long branchId;
 }

@@ -1,10 +1,7 @@
 package com.lit.ims.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
 @Entity
@@ -13,12 +10,23 @@ import lombok.NoArgsConstructor;
 @Builder
 @Table(name = "type_master")
 public class TypeMaster {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(unique = true)
+
+    @Column(nullable = false, unique = true)
     private String trno;
-    @Column(nullable = false,unique = true)
+
+    @Column(nullable = false)
     private String name;
+
+    @Column(nullable = false)
     private String status;
+
+    @Column(nullable = false)
+    private Long companyId;
+
+    @Column(nullable = false)
+    private Long branchId;
 }

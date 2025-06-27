@@ -3,92 +3,107 @@ package com.lit.ims.service;
 import com.lit.ims.dto.ItemDTO;
 import com.lit.ims.entity.Item;
 import com.lit.ims.repository.ItemRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class ItemService {
 
-    @Autowired
-    private ItemRepository itemRepository;
+    private final ItemRepository itemRepository;
+    private final TransactionLogService transactionLogService;
 
-    @Autowired
-    private TransactionLogService transactionLogService;
+    // ✅ Create Item
+    public Item saveItem(ItemDTO request, Long companyId, Long branchId) {
+        if (itemRepository.existsByCodeAndCompanyIdAndBranchId(request.getCode(), companyId, branchId)) {
+            throw new RuntimeException("Item code already exists in this branch.");
+        }
 
 
-    public Item saveItem(ItemDTO request) {
         Item item = Item.builder()
                 .name(request.getName())
                 .code(request.getCode())
                 .uom(request.getUom())
                 .type(request.getType())
-                .barcode((request.getBarcode() != null && !request.getBarcode().isEmpty()) ? request.getBarcode() : null)
-                .groupName(request.getGroup())
+                .barcode(request.getBarcode())
+                .groupName(request.getGroupName())
                 .status(request.getStatus())
                 .price(request.getPrice())
-                .stQty(request.getSt_qty())
+                .stQty(request.getStQty())
                 .life(request.getLife())
+                .companyId(companyId)
+                .branchId(branchId)
                 .build();
 
         Item savedItem = itemRepository.save(item);
 
-        // ✅ Log transaction
-        transactionLogService.log("CREATE", "Item", savedItem.getId(), "Created item: " + savedItem.getName());
+        transactionLogService.log("CREATE", "Item", savedItem.getId(),
+                "Created item with code: " + savedItem.getCode());
 
         return savedItem;
     }
 
-    public List<Item> getAllItem() {
-        return itemRepository.findAll();
+    // ✅ Get All Items
+    public List<Item> getAllItems(Long companyId, Long branchId) {
+        return itemRepository.findByCompanyIdAndBranchId(companyId, branchId);
     }
 
-    public Optional<Item> getItemById(Long id) {
-        return itemRepository.findById(id);
+    // ✅ Get Item by ID
+    public Optional<Item> getItemById(Long id, Long companyId, Long branchId) {
+        return itemRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId);
     }
 
-    public Optional<Item> updateItem(Long id, ItemDTO dto) {
-        return itemRepository.findById(id).map(item -> {
+    // ✅ Update Item
+    public Optional<Item> updateItem(Long id, ItemDTO dto, Long companyId, Long branchId) {
+        return itemRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId).map(item -> {
             item.setName(dto.getName());
             item.setCode(dto.getCode());
             item.setUom(dto.getUom());
             item.setType(dto.getType());
-            item.setBarcode(dto.getBarcode() != null && !dto.getBarcode().isEmpty() ? dto.getBarcode() : null);
-            item.setGroupName(dto.getGroup());
+            item.setBarcode(dto.getBarcode());
+            item.setGroupName(dto.getGroupName());
             item.setStatus(dto.getStatus());
             item.setPrice(dto.getPrice());
-            item.setStQty(dto.getSt_qty());
+            item.setStQty(dto.getStQty());
             item.setLife(dto.getLife());
 
-            Item updatedItem = itemRepository.save(item);
+            Item updated = itemRepository.save(item);
 
-            // ✅ Log transaction
-            transactionLogService.log("UPDATE", "Item", updatedItem.getId(), "Updated item: " + updatedItem.getName());
+            transactionLogService.log("UPDATE", "Item", updated.getId(),
+                    "Updated item with code: " + updated.getCode());
 
-            return updatedItem;
+            return updated;
         });
     }
 
-    public boolean deleteItem(Long id) {
-        if (itemRepository.existsById(id)) {
+    // ✅ Delete Single Item
+    public boolean deleteItem(Long id, Long companyId, Long branchId) {
+        Optional<Item> item = itemRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId);
+        if (item.isPresent()) {
             itemRepository.deleteById(id);
 
-            // ✅ Log transaction
-            transactionLogService.log("DELETE", "Item", id, "Deleted item with ID: " + id);
+            transactionLogService.log("DELETE", "Item", id,
+                    "Deleted item with ID: " + id);
 
             return true;
         }
         return false;
     }
 
-    public void deleteMultipleItem(List<Long> ids) {
-        itemRepository.deleteAllById(ids);
+    // ✅ Delete Multiple Items
+    public void deleteMultipleItems(List<Long> ids, Long companyId, Long branchId) {
+        List<Item> items = itemRepository.findAllById(ids).stream()
+                .filter(item -> item.getCompanyId().equals(companyId) && item.getBranchId().equals(branchId))
+                .toList();
 
-        // ✅ Log each deletion
-        for (Long id : ids) {
-            transactionLogService.log("DELETE", "Item", id, "Deleted item with ID: " + id);
+        itemRepository.deleteAll(items);
+
+        for (Item item : items) {
+            transactionLogService.log("DELETE", "Item", item.getId(),
+                    "Deleted item with ID: " + item.getId());
         }
     }
 }
