@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -22,25 +23,51 @@ public class UserController {
 
     @PostMapping("/create")
     @PreAuthorize("hasAuthority('ROLE_OWNER')")
-    public String create(@RequestBody CreateUserRequest request) {
-        userService.createUser(request);
-
-        return "User created successfully";
+    public ResponseEntity<?> create(@RequestBody CreateUserRequest request,
+                                    @RequestAttribute("companyId") Long companyId,
+                                    @RequestAttribute("branchId") Long branchId) {
+        try {
+            userService.createUser(request, companyId, branchId);
+            return ResponseEntity.ok(
+                    Map.of("status", "success", "message", "User created successfully")
+            );
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("status", "error", "message", e.getMessage())
+            );
+        }
     }
-    
+
+
     @GetMapping("/check-role")
     public String checkRole() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return "Current user: " + auth.getName() + ", Roles: " + auth.getAuthorities();
     }
-    
+
     @GetMapping("/all-staff")
     @PreAuthorize("hasAuthority('ROLE_OWNER')")
-    public ResponseEntity<List<UserDto>> getAllStaff() {
+    public ResponseEntity<?> getAllStaff(@RequestAttribute("companyId") Long companyId,
+                                         @RequestAttribute("branchId") Long branchId) {
         List<Role> staffRoles = Arrays.asList(Role.ADMIN, Role.MANAGER, Role.USER);
-        List<UserDto> users = userService.getUsersByRoles(staffRoles);
-        return ResponseEntity.ok(users);
+        List<UserDto> users = userService.getUsersByRolesAndCompanyBranch(staffRoles, companyId, branchId);
+        return ResponseEntity.ok(Map.of("users", users));
     }
+
+    @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasAuthority('ROLE_OWNER')")
+    public ResponseEntity<?> deleteUser(@PathVariable Long id,
+                                        @RequestAttribute("companyId") Long companyId,
+                                        @RequestAttribute("branchId") Long branchId) {
+        try {
+            userService.deleteUser(id, companyId, branchId);
+            return ResponseEntity.ok(Map.of("status", "success", "message", "User deleted successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+
 
 
 }

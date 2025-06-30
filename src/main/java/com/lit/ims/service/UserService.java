@@ -70,7 +70,7 @@ public class UserService {
     }
 
     // ✅ Create normal users with branches
-    public void createUser(CreateUserRequest req) {
+    public void createUser(CreateUserRequest req, Long companyId, Long branchId) {
         if (userRepo.findByUsername(req.getUsername()).isPresent()) {
             throw new RuntimeException("Username already exists. Please choose a different username.");
         }
@@ -82,20 +82,28 @@ public class UserService {
             throw new RuntimeException("Role must be ADMIN, MANAGER, or USER.");
         }
 
-        // ✅ Fetch company
-        Company company = companyRepo.findById(req.getCompanyId())
-                .orElseThrow(() -> new RuntimeException("Company not found with ID: " + req.getCompanyId()));
+        // ✅ Fetch company from JWT token
+        Company company = companyRepo.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("Company not found with ID: " + companyId));
 
-        // ✅ Fetch and validate branches
-        List<Branch> branches = branchRepo.findAllById(req.getBranchIds());
-        if (branches.isEmpty()) {
-            throw new RuntimeException("At least one branch must be selected.");
-        }
+        // ✅ Fetch branch from JWT token (Ensures at least the logged-in branch is assigned)
+        Branch defaultBranch = branchRepo.findById(branchId)
+                .orElseThrow(() -> new RuntimeException("Branch not found with ID: " + branchId));
 
-        for (Branch b : branches) {
-            if (!b.getCompany().getId().equals(company.getId())) {
-                throw new RuntimeException("Branch " + b.getName() + " does not belong to the selected company.");
+        // ✅ Fetch and validate other branches if user selected
+        List<Branch> branches = new ArrayList<>();
+        if (req.getBranchIds() != null && !req.getBranchIds().isEmpty()) {
+            branches = branchRepo.findAllById(req.getBranchIds());
+            if (branches.isEmpty()) {
+                throw new RuntimeException("At least one valid branch must be selected.");
             }
+            for (Branch b : branches) {
+                if (!b.getCompany().getId().equals(company.getId())) {
+                    throw new RuntimeException("Branch " + b.getName() + " does not belong to the selected company.");
+                }
+            }
+        } else {
+            branches.add(defaultBranch); // ✅ If no branches provided, assign current branch
         }
 
         // ✅ Create User
@@ -129,8 +137,8 @@ public class UserService {
     }
 
     // ✅ Get users by role
-    public List<UserDto> getUsersByRoles(List<Role> roles) {
-        List<User> users = userRepo.findByRoleIn(roles);
+    public List<UserDto> getUsersByRolesAndCompanyBranch(List<Role> roles, Long companyId, Long branchId) {
+        List<User> users = userRepo.findByRoleInAndCompanyIdAndBranchId(roles, companyId, branchId);
         return users.stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
@@ -153,4 +161,26 @@ public class UserService {
                         : Collections.emptyList())
                 .build();
     }
+
+    public void deleteUser(Long userId, Long companyId, Long branchId) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+
+        // ✅ Validate company
+        if (!user.getCompany().getId().equals(companyId)) {
+            throw new RuntimeException("User does not belong to your company.");
+        }
+
+        // ✅ Validate branch
+        boolean branchMatch = user.getBranches().stream()
+                .anyMatch(branch -> branch.getId().equals(branchId));
+        if (!branchMatch) {
+            throw new RuntimeException("User does not belong to your branch.");
+        }
+
+        userRepo.delete(user);
+
+        logService.log("DELETE", "User", userId, "Deleted user: " + user.getUsername());
+    }
+
 }
