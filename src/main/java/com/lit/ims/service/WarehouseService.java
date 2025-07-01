@@ -5,7 +5,10 @@ import com.lit.ims.entity.Warehouse;
 import com.lit.ims.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -16,26 +19,31 @@ public class WarehouseService {
     private final WarehouseRepository warehouseRepository;
     private final TransactionLogService logService;
 
-    // 🔥 Generate TRNO
+    // 🔥 Generate TRNO like WH20250701001
     private String generateNextTrno(Long companyId, Long branchId) {
-        long timestamp = System.currentTimeMillis();
+        String prefix = "WH";
+        String date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         int nextSequence = 1;
+
         Optional<Warehouse> last = warehouseRepository.findTopByCompanyIdAndBranchIdOrderByIdDesc(companyId, branchId);
 
         if (last.isPresent()) {
             String lastTrno = last.get().getTrno();
-            String lastSeq = lastTrno.substring(lastTrno.length() - 3);
-            try {
-                nextSequence = Integer.parseInt(lastSeq) + 1;
-            } catch (NumberFormatException ignored) {}
+            if (lastTrno != null && lastTrno.startsWith(prefix + date)) {
+                String lastSeq = lastTrno.substring((prefix + date).length());
+                try {
+                    nextSequence = Integer.parseInt(lastSeq) + 1;
+                } catch (NumberFormatException ignored) {
+                }
+            }
         }
-        return "WH" + timestamp + String.format("%03d", nextSequence);
+        return prefix + date + String.format("%03d", nextSequence);
     }
 
     // ✅ Save
     public WarehouseDTO saveWarehouse(Warehouse warehouse, Long companyId, Long branchId) {
         if (warehouseRepository.existsByCodeAndCompanyIdAndBranchId(warehouse.getCode(), companyId, branchId)) {
-            throw new RuntimeException("Code '" + warehouse.getCode() + "' already exists.");
+            throw new IllegalArgumentException("Code '" + warehouse.getCode() + "' already exists.");
         }
 
         warehouse.setCompanyId(companyId);
@@ -55,13 +63,14 @@ public class WarehouseService {
     }
 
     // ✅ Update
+    @Transactional
     public WarehouseDTO updateWarehouse(Long id, Warehouse updated, Long companyId, Long branchId) {
         Warehouse existing = warehouseRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
-                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Warehouse not found with ID: " + id));
 
         if (!existing.getCode().equals(updated.getCode()) &&
                 warehouseRepository.existsByCodeAndCompanyIdAndBranchId(updated.getCode(), companyId, branchId)) {
-            throw new RuntimeException("Code '" + updated.getCode() + "' already exists.");
+            throw new IllegalArgumentException("Code '" + updated.getCode() + "' already exists.");
         }
 
         existing.setCode(updated.getCode());
@@ -89,29 +98,31 @@ public class WarehouseService {
     }
 
     // ✅ Get By ID
-    public Optional<Warehouse> getWarehouseById(Long id, Long companyId, Long branchId) {
-        return warehouseRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId);
+    public WarehouseDTO getWarehouseById(Long id, Long companyId, Long branchId) {
+        Warehouse warehouse = warehouseRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
+                .orElseThrow(() -> new IllegalArgumentException("Warehouse not found with ID: " + id));
+        return toDTO(warehouse);
     }
 
     // ✅ Delete
-    public boolean deleteWarehouse(Long id, Long companyId, Long branchId) {
-        Optional<Warehouse> existing = warehouseRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId);
-        if (existing.isPresent()) {
-            warehouseRepository.deleteById(id);
+    @Transactional
+    public void deleteWarehouse(Long id, Long companyId, Long branchId) {
+        Warehouse warehouse = warehouseRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
+                .orElseThrow(() -> new RuntimeException("Warehouse not found with ID: " + id));
 
-            logService.log(
-                    "DELETE",
-                    "Warehouse",
-                    id,
-                    "Deleted warehouse: " + existing.get().getCode() + " - " + existing.get().getName()
-            );
+        warehouseRepository.deleteById(id);
 
-            return true;
-        }
-        return false;
+        logService.log(
+                "DELETE",
+                "Warehouse",
+                id,
+                "Deleted warehouse: " + warehouse.getCode() + " - " + warehouse.getName()
+        );
     }
 
+
     // ✅ Delete Multiple
+    @Transactional
     public void deleteMultipleWarehouses(List<Long> ids, Long companyId, Long branchId) {
         List<Warehouse> warehouses = ids.stream()
                 .map(id -> warehouseRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId))
@@ -119,16 +130,18 @@ public class WarehouseService {
                 .map(Optional::get)
                 .collect(Collectors.toList());
 
+        if (warehouses.isEmpty()) {
+            throw new IllegalArgumentException("No warehouses found to delete.");
+        }
+
         warehouseRepository.deleteAll(warehouses);
 
-        for (Warehouse w : warehouses) {
-            logService.log(
-                    "DELETE",
-                    "Warehouse",
-                    w.getId(),
-                    "Deleted warehouse: " + w.getCode() + " - " + w.getName()
-            );
-        }
+        warehouses.forEach(w -> logService.log(
+                "DELETE",
+                "Warehouse",
+                w.getId(),
+                "Deleted warehouse: " + w.getCode() + " - " + w.getName()
+        ));
     }
 
     // ✅ Convert Entity to DTO

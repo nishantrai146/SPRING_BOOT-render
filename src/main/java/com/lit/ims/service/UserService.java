@@ -2,9 +2,12 @@ package com.lit.ims.service;
 
 import com.lit.ims.dto.*;
 import com.lit.ims.entity.*;
+import com.lit.ims.exception.ResourceNotFoundException;
 import com.lit.ims.repository.*;
+import com.lit.ims.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -70,7 +73,7 @@ public class UserService {
     }
 
     // ✅ Create normal users with branches
-    public void createUser(CreateUserRequest req, Long companyId, Long branchId) {
+    public ResponseEntity<ApiResponse> createUser(CreateUserRequest req, Long companyId, Long branchId) {
         if (userRepo.findByUsername(req.getUsername()).isPresent()) {
             throw new RuntimeException("Username already exists. Please choose a different username.");
         }
@@ -82,15 +85,12 @@ public class UserService {
             throw new RuntimeException("Role must be ADMIN, MANAGER, or USER.");
         }
 
-        // ✅ Fetch company from JWT token
         Company company = companyRepo.findById(companyId)
-                .orElseThrow(() -> new RuntimeException("Company not found with ID: " + companyId));
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + companyId));
 
-        // ✅ Fetch branch from JWT token (Ensures at least the logged-in branch is assigned)
         Branch defaultBranch = branchRepo.findById(branchId)
-                .orElseThrow(() -> new RuntimeException("Branch not found with ID: " + branchId));
+                .orElseThrow(() -> new ResourceNotFoundException("Branch not found with ID: " + branchId));
 
-        // ✅ Fetch and validate other branches if user selected
         List<Branch> branches = new ArrayList<>();
         if (req.getBranchIds() != null && !req.getBranchIds().isEmpty()) {
             branches = branchRepo.findAllById(req.getBranchIds());
@@ -103,10 +103,9 @@ public class UserService {
                 }
             }
         } else {
-            branches.add(defaultBranch); // ✅ If no branches provided, assign current branch
+            branches.add(defaultBranch);
         }
 
-        // ✅ Create User
         User user = new User();
         user.setUsername(req.getUsername());
         user.setEmail(req.getEmail());
@@ -119,7 +118,6 @@ public class UserService {
         user.setCompany(company);
         user.setBranches(branches);
 
-        // ✅ Page permissions
         List<PagePermission> permissions = req.getPermissions().stream().map(dto -> {
             PagePermission p = new PagePermission();
             p.setPageName(dto.getPageName());
@@ -134,14 +132,26 @@ public class UserService {
         User saved = userRepo.save(user);
 
         logService.log("CREATE", "User", saved.getId(), "Created user: " + saved.getUsername());
+
+        return ResponseEntity.ok(ApiResponse.builder()
+                .status(true)
+                .message("User created successfully")
+                .data(saved.getId())
+                .build());
     }
 
     // ✅ Get users by role
-    public List<UserDto> getUsersByRolesAndCompanyBranch(List<Role> roles, Long companyId, Long branchId) {
+    public ResponseEntity<ApiResponse> getUsersByRolesAndCompanyBranch(List<Role> roles, Long companyId, Long branchId) {
         List<User> users = userRepo.findByRoleInAndCompanyIdAndBranchId(roles, companyId, branchId);
-        return users.stream()
+        List<UserDto> userDtos = users.stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
+
+        return ResponseEntity.ok(ApiResponse.builder()
+                .status(true)
+                .message("Users fetched successfully")
+                .data(userDtos)
+                .build());
     }
 
     // ✅ Mapping User to DTO
@@ -162,16 +172,15 @@ public class UserService {
                 .build();
     }
 
-    public void deleteUser(Long userId, Long companyId, Long branchId) {
+    // ✅ Delete user with validation
+    public ResponseEntity<ApiResponse> deleteUser(Long userId, Long companyId, Long branchId) {
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
-        // ✅ Validate company
         if (!user.getCompany().getId().equals(companyId)) {
             throw new RuntimeException("User does not belong to your company.");
         }
 
-        // ✅ Validate branch
         boolean branchMatch = user.getBranches().stream()
                 .anyMatch(branch -> branch.getId().equals(branchId));
         if (!branchMatch) {
@@ -181,6 +190,11 @@ public class UserService {
         userRepo.delete(user);
 
         logService.log("DELETE", "User", userId, "Deleted user: " + user.getUsername());
-    }
 
+        return ResponseEntity.ok(ApiResponse.builder()
+                .status(true)
+                .message("User deleted successfully")
+                .data(null)
+                .build());
+    }
 }

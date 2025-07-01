@@ -1,34 +1,31 @@
 package com.lit.ims.entity;
 
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
+import java.util.List;
+
 @Entity
-@Table(name = "vendor_customer_master")
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class VendorCustomer {
+public class BOM {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String type;
-    private String name;
-    private String mobile;
-    private String email;
-    private String address;
-    private String city;
-    private String state;
-    private String pincode;
-    private String status;
-    @Column(name = "company_id", nullable = false)
-    private Long companyId;
 
-    @Column(name = "branch_id", nullable = false)
+    private String name;
+    private String code;
+    private String status;
+
+    @OneToMany(mappedBy = "bom",cascade = CascadeType.ALL,orphanRemoval = true)
+    private List<BomItem> items;
+    @Column(nullable = false)
+    private Long companyId;
+    @Column(nullable = false)
     private Long branchId;
 }

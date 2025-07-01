@@ -5,8 +5,10 @@ import com.lit.ims.dto.PermissionDto;
 import com.lit.ims.entity.Branch;
 import com.lit.ims.entity.PagePermission;
 import com.lit.ims.entity.User;
+import com.lit.ims.exception.ResourceNotFoundException;
 import com.lit.ims.repository.BranchRepository;
 import com.lit.ims.repository.UserRepository;
+import com.lit.ims.response.ApiResponse;
 import com.lit.ims.security.JwtService;
 import com.lit.ims.service.LoginLogService;
 import jakarta.servlet.http.Cookie;
@@ -19,9 +21,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -34,29 +36,26 @@ public class AuthController {
     private final JwtService jwtService;
     private final LoginLogService loginLogService;
 
-    // ✅ Step 1: Login with username & password → Get list of branches for this user
+    /**
+     * ✅ Step 1: Login with username & password → Get list of branches for this user
+     */
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@RequestBody LoginRequest req,
-                                                     HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> login(
+            @RequestBody LoginRequest req,
+            HttpServletRequest request) {
 
         String ipAddress = request.getRemoteAddr();
         String username = req.getUsername();
 
-        Map<String, Object> responseBody = new HashMap<>();
-
         User user = userRepo.findByUsername(username)
-                .orElse(null);
-
-        if (user == null) {
-            loginLogService.log(username, ipAddress, "FAILURE");
-            responseBody.put("message", "Login failed: User not found.");
-            return ResponseEntity.status(401).body(responseBody);
-        }
+                .orElseThrow(() -> {
+                    loginLogService.log(username, ipAddress, "FAILURE");
+                    return new ResourceNotFoundException("User not found.");
+                });
 
         if (!encoder.matches(req.getPassword(), user.getPassword())) {
             loginLogService.log(username, ipAddress, "FAILURE");
-            responseBody.put("message", "Login failed: Invalid credentials.");
-            return ResponseEntity.status(401).body(responseBody);
+            throw new ResourceNotFoundException("Invalid credentials.");
         }
 
         loginLogService.log(username, ipAddress, "SUCCESS");
@@ -72,37 +71,39 @@ public class AuthController {
                 })
                 .collect(Collectors.toList());
 
-        responseBody.put("message", "Login successful");
-        responseBody.put("companyId", user.getCompany().getId());
-        responseBody.put("companyName", user.getCompany().getName());
-        responseBody.put("branches", branches);
-        responseBody.put("username", user.getUsername());
-        responseBody.put("userId", user.getId());
+        Map<String, Object> data = new HashMap<>();
+        data.put("companyId", user.getCompany().getId());
+        data.put("companyName", user.getCompany().getName());
+        data.put("branches", branches);
+        data.put("username", user.getUsername());
+        data.put("userId", user.getId());
 
-        return ResponseEntity.ok(responseBody);
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Login successful", data)
+        );
     }
 
-    // ✅ Step 2: Select Branch → Get JWT token
+    /**
+     * ✅ Step 2: Select Branch → Get JWT token
+     */
     @PostMapping("/select-branch")
-    public ResponseEntity<Map<String, Object>> selectBranch(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> selectBranch(
             @RequestParam String username,
             @RequestParam Long branchId,
             HttpServletResponse response) {
 
-        Map<String, Object> responseBody = new HashMap<>();
-
         User user = userRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         boolean hasAccess = user.getBranches().stream()
                 .anyMatch(branch -> branch.getId().equals(branchId));
 
         if (!hasAccess) {
-            throw new RuntimeException("User does not have access to this branch.");
+            throw new ResourceNotFoundException("User does not have access to this branch.");
         }
 
         Branch branch = branchRepo.findById(branchId)
-                .orElseThrow(() -> new RuntimeException("Branch not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Branch not found"));
 
         String token = jwtService.generateToken(
                 user.getId(),
@@ -115,10 +116,10 @@ public class AuthController {
         // ✅ Set token in secure cookie
         ResponseCookie cookie = ResponseCookie.from("token", token)
                 .httpOnly(true)
-                .secure(false) // ✅ true in production with HTTPS
+                .secure(false) // ✅ Should be true in production with HTTPS
                 .path("/")
                 .maxAge(24 * 60 * 60)
-                .sameSite("Lax") // or "Strict" or "None"
+                .sameSite("Lax")
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
@@ -127,23 +128,30 @@ public class AuthController {
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
 
-        responseBody.put("message", "Branch selected and token generated.");
-        responseBody.put("token", token);
-        responseBody.put("permissions", permissions);
-        responseBody.put("branchId", branch.getId());
-        responseBody.put("branchName", branch.getName());
+        Map<String, Object> data = new HashMap<>();
+        data.put("token", token);
+        data.put("permissions", permissions);
+        data.put("branchId", branch.getId());
+        data.put("branchName", branch.getName());
 
-        return ResponseEntity.ok(responseBody);
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Branch selected and token generated.", data)
+        );
     }
 
+    /**
+     * ✅ Logout
+     */
     @PostMapping("/logout")
-    public String logout(HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<String>> logout(HttpServletResponse response) {
         Cookie cookie = new Cookie("token", null);
         cookie.setHttpOnly(true);
         cookie.setPath("/");
         cookie.setMaxAge(0);
         response.addCookie(cookie);
-        return "Logged out";
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Logged out successfully", "Logged out")
+        );
     }
 
     private PermissionDto mapToDto(PagePermission permission) {

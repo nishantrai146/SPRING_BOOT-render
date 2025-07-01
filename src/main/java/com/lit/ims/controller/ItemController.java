@@ -2,13 +2,13 @@ package com.lit.ims.controller;
 
 import com.lit.ims.dto.ItemDTO;
 import com.lit.ims.entity.Item;
+import com.lit.ims.response.ApiResponse;
 import com.lit.ims.service.ItemService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -21,76 +21,126 @@ public class ItemController {
 
     // ✅ Create Item
     @PostMapping("/add")
-    public ResponseEntity<?> addItem(@RequestBody ItemDTO request,
-                                     @RequestAttribute("companyId") Long companyId,
-                                     @RequestAttribute("branchId") Long branchId) {
+    public ResponseEntity<ApiResponse<Item>> addItem(@RequestBody ItemDTO request,
+                                                     @RequestAttribute("companyId") Long companyId,
+                                                     @RequestAttribute("branchId") Long branchId) {
         try {
             Item saved = itemService.saveItem(request, companyId, branchId);
-            return ResponseEntity.ok(Map.of(
-                    "message", "Item Added Successfully",
-                    "item", saved
-            ));
+            return ResponseEntity.ok(ApiResponse.<Item>builder()
+                    .status(true)
+                    .message("Item Added Successfully")
+                    .data(saved)
+                    .build());
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", e.getMessage()
-            ));
+            return ResponseEntity.badRequest().body(ApiResponse.<Item>builder()
+                    .status(false)
+                    .message(e.getMessage())
+                    .build());
         }
     }
+
     // ✅ Get All Items
     @GetMapping("/all")
-    public ResponseEntity<?> getAllItems(@RequestAttribute("companyId") Long companyId,
-                                         @RequestAttribute("branchId") Long branchId) {
+    public ResponseEntity<ApiResponse<List<Item>>> getAllItems(@RequestAttribute("companyId") Long companyId,
+                                                               @RequestAttribute("branchId") Long branchId) {
         List<Item> items = itemService.getAllItems(companyId, branchId);
-        return ResponseEntity.ok(Map.of("items", items));
+        return ResponseEntity.ok(ApiResponse.<List<Item>>builder()
+                .status(true)
+                .message("Items fetched successfully")
+                .data(items)
+                .build());
     }
-
 
     // ✅ Get Item by ID
     @GetMapping("/{id}")
-    public ResponseEntity<Item> getItemById(@PathVariable Long id,
-                                            @RequestAttribute("companyId") Long companyId,
-                                            @RequestAttribute("branchId") Long branchId) {
+    public ResponseEntity<ApiResponse<Item>> getItemById(@PathVariable Long id,
+                                                         @RequestAttribute("companyId") Long companyId,
+                                                         @RequestAttribute("branchId") Long branchId) {
         return itemService.getItemById(id, companyId, branchId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .map(item -> ResponseEntity.ok(ApiResponse.<Item>builder()
+                        .status(true)
+                        .message("Item fetched successfully")
+                        .data(item)
+                        .build()))
+                .orElse(ResponseEntity.badRequest().body(ApiResponse.<Item>builder()
+                        .status(false)
+                        .message("Item not found")
+                        .build()));
     }
-
-
 
     // ✅ Update Item
     @PutMapping("/update/{id}")
-    public ResponseEntity<String> updateItem(@PathVariable Long id,
-                                             @RequestBody ItemDTO dto,
-                                             @RequestAttribute("companyId") Long companyId,
-                                             @RequestAttribute("branchId") Long branchId) {
-        Optional<Item> updated = itemService.updateItem(id, dto, companyId, branchId);
+    public ResponseEntity<ApiResponse<Item>> updateItem(@PathVariable Long id,
+                                                        @RequestBody ItemDTO dto,
+                                                        @RequestAttribute("companyId") Long companyId,
+                                                        @RequestAttribute("branchId") Long branchId) {
+        try {
+            Optional<Item> updated = itemService.updateItem(id, dto, companyId, branchId);
 
-        if (updated.isPresent()) {
-            return ResponseEntity.ok("Item Updated Successfully");
-        } else {
-            return ResponseEntity.badRequest().body("Item Not Found");
+            if (updated.isPresent()) {
+                return ResponseEntity.ok(ApiResponse.<Item>builder()
+                        .status(true)
+                        .message("Item updated successfully")
+                        .data(updated.get())
+                        .build());
+            } else {
+                return ResponseEntity.badRequest().body(ApiResponse.<Item>builder()
+                        .status(false)
+                        .message("Item not found")
+                        .build());
+            }
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.<Item>builder()
+                    .status(false)
+                    .message(e.getMessage())
+                    .build());
         }
     }
 
     // ✅ Delete Single Item
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<?> deleteItem(@PathVariable Long id,
-                                        @RequestAttribute("companyId") Long companyId,
-                                        @RequestAttribute("branchId") Long branchId) {
-        boolean deleted = itemService.deleteItem(id, companyId, branchId);
-        if (deleted) {
-            return ResponseEntity.ok("Item Deleted Successfully");
-        } else {
-            return ResponseEntity.badRequest().body("Item Not Found");
+    public ResponseEntity<ApiResponse<String>> deleteItem(@PathVariable Long id,
+                                                          @RequestAttribute("companyId") Long companyId,
+                                                          @RequestAttribute("branchId") Long branchId) {
+        try {
+            boolean deleted = itemService.deleteItem(id, companyId, branchId);
+            if (deleted) {
+                return ResponseEntity.ok(ApiResponse.<String>builder()
+                        .status(true)
+                        .message("Item deleted successfully")
+                        .data("Deleted ID: " + id)
+                        .build());
+            } else {
+                return ResponseEntity.badRequest().body(ApiResponse.<String>builder()
+                        .status(false)
+                        .message("Item not found")
+                        .build());
+            }
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.<String>builder()
+                    .status(false)
+                    .message(e.getMessage())
+                    .build());
         }
     }
 
     // ✅ Delete Multiple Items
     @DeleteMapping("/delete-multiple")
-    public ResponseEntity<?> deleteMultipleItems(@RequestBody List<Long> ids,
-                                                 @RequestAttribute("companyId") Long companyId,
-                                                 @RequestAttribute("branchId") Long branchId) {
-        itemService.deleteMultipleItems(ids, companyId, branchId);
-        return ResponseEntity.ok("Items Deleted Successfully");
+    public ResponseEntity<ApiResponse<String>> deleteMultipleItems(@RequestBody List<Long> ids,
+                                                                   @RequestAttribute("companyId") Long companyId,
+                                                                   @RequestAttribute("branchId") Long branchId) {
+        try {
+            itemService.deleteMultipleItems(ids, companyId, branchId);
+            return ResponseEntity.ok(ApiResponse.<String>builder()
+                    .status(true)
+                    .message("Items deleted successfully")
+                    .data("Deleted IDs: " + ids)
+                    .build());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.<String>builder()
+                    .status(false)
+                    .message(e.getMessage())
+                    .build());
+        }
     }
 }

@@ -3,34 +3,34 @@ package com.lit.ims.service;
 import com.lit.ims.dto.VendorCustomerDTO;
 import com.lit.ims.entity.VendorCustomer;
 import com.lit.ims.repository.VendorCustomerRepo;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class VendorCustomerService {
 
-    @Autowired
-    private VendorCustomerRepo repository;
-
-    @Autowired
-    private TransactionLogService logService;
+    private final VendorCustomerRepo repository;
+    private final TransactionLogService logService;
 
     // ✅ Create
     public VendorCustomer add(VendorCustomerDTO dto, Long companyId, Long branchId) {
-        VendorCustomer vc = new VendorCustomer();
-        vc.setType(dto.getType());
-        vc.setName(dto.getName());
-        vc.setMobile(dto.getMobile());
-        vc.setEmail(dto.getEmail());
-        vc.setCity(dto.getCity());
-        vc.setState(dto.getState());
-        vc.setAddress(dto.getAddress());
-        vc.setPincode(dto.getPincode());
-        vc.setStatus(dto.getStatus());
-        vc.setCompanyId(companyId);
-        vc.setBranchId(branchId);
+        VendorCustomer vc = VendorCustomer.builder()
+                .type(dto.getType())
+                .name(dto.getName())
+                .mobile(dto.getMobile())
+                .email(dto.getEmail())
+                .city(dto.getCity())
+                .state(dto.getState())
+                .address(dto.getAddress())
+                .pincode(dto.getPincode())
+                .status(dto.getStatus())
+                .companyId(companyId)
+                .branchId(branchId)
+                .build();
 
         VendorCustomer saved = repository.save(vc);
 
@@ -40,19 +40,20 @@ public class VendorCustomerService {
         return saved;
     }
 
-    // ✅ Get all for company/branch
+    // ✅ Get All
     public List<VendorCustomer> getAll(Long companyId, Long branchId) {
         return repository.findByCompanyIdAndBranchId(companyId, branchId);
     }
 
-    // ✅ Get by ID (company/branch enforced)
+    // ✅ Get by ID with company/branch filter
     public VendorCustomer getById(Long id, Long companyId, Long branchId) {
         return repository.findById(id)
                 .filter(vc -> vc.getCompanyId().equals(companyId) && vc.getBranchId().equals(branchId))
-                .orElseThrow(() -> new RuntimeException("Vendor/Customer not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Vendor/Customer not found with ID: " + id));
     }
 
-    // ✅ Update (company/branch enforced)
+    // ✅ Update
+    @Transactional
     public VendorCustomer update(Long id, VendorCustomerDTO dto, Long companyId, Long branchId) {
         VendorCustomer vc = getById(id, companyId, branchId);
 
@@ -74,26 +75,30 @@ public class VendorCustomerService {
         return updated;
     }
 
-    // ✅ Delete (company/branch enforced)
+    // ✅ Delete
+    @Transactional
     public void delete(Long id, Long companyId, Long branchId) {
         VendorCustomer vc = getById(id, companyId, branchId);
         repository.delete(vc);
 
         logService.log("DELETE", "VendorCustomer", id,
-                "Deleted Vendor/Customer with ID: " + id);
+                "Deleted " + vc.getType() + ": " + vc.getName());
     }
 
-    // ✅ Delete multiple (company/branch enforced)
+    // ✅ Delete Multiple
+    @Transactional
     public void deleteMultiple(List<Long> ids, Long companyId, Long branchId) {
         List<VendorCustomer> customers = repository.findAllById(ids).stream()
                 .filter(vc -> vc.getCompanyId().equals(companyId) && vc.getBranchId().equals(branchId))
                 .toList();
 
+        if (customers.isEmpty()) {
+            throw new IllegalArgumentException("No matching Vendor/Customer records found for deletion.");
+        }
+
         repository.deleteAll(customers);
 
-        for (VendorCustomer vc : customers) {
-            logService.log("DELETE", "VendorCustomer", vc.getId(),
-                    "Deleted Vendor/Customer with ID: " + vc.getId());
-        }
+        customers.forEach(vc -> logService.log("DELETE", "VendorCustomer", vc.getId(),
+                "Deleted " + vc.getType() + ": " + vc.getName()));
     }
 }

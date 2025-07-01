@@ -2,7 +2,8 @@ package com.lit.ims.service;
 
 import com.lit.ims.entity.User;
 import com.lit.ims.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
@@ -10,36 +11,41 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class CustomUserDetailsService implements UserDetailsService {
 
-    @Autowired private UserRepository userRepo;
+    private final UserRepository userRepo;
 
     @Override
-    public UserDetails loadUserByUsername(String username) {
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         try {
-            var user = userRepo.findByUsername(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-            return org.springframework.security.core.userdetails.User.withUsername(user.getUsername())
-                    .password(user.getPassword())
-                    .authorities("ROLE_" + user.getRole().name())
-                    .build();
+            User user = userRepo.findByUsername(username)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+
+            return mapToUserDetails(user);
+
         } catch (IncorrectResultSizeDataAccessException e) {
-            // Handle case where multiple users with same username exist
-            // This is a temporary workaround until the duplicates are cleaned up
+            // Log a warning that duplicates exist
+            log.warn("Multiple users found with username '{}'. Using the first match.", username);
+
             List<User> users = userRepo.findAll().stream()
                     .filter(u -> u.getUsername().equals(username))
                     .toList();
-            
+
             if (users.isEmpty()) {
-                throw new UsernameNotFoundException("User not found");
+                throw new UsernameNotFoundException("User not found with username: " + username);
             }
-            
-            // Use the first user found as a fallback
-            User user = users.get(0);
-            return org.springframework.security.core.userdetails.User.withUsername(user.getUsername())
-                    .password(user.getPassword())
-                    .authorities("ROLE_" + user.getRole().name())
-                    .build();
+
+            return mapToUserDetails(users.get(0));
         }
+    }
+
+    private UserDetails mapToUserDetails(User user) {
+        return org.springframework.security.core.userdetails.User
+                .withUsername(user.getUsername())
+                .password(user.getPassword())
+                .authorities("ROLE_" + user.getRole().name())
+                .build();
     }
 }

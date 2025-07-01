@@ -3,6 +3,7 @@ package com.lit.ims.service;
 import com.lit.ims.dto.BranchDTO;
 import com.lit.ims.entity.Branch;
 import com.lit.ims.entity.Company;
+import com.lit.ims.exception.ResourceNotFoundException;
 import com.lit.ims.repository.BranchRepository;
 import com.lit.ims.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,6 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-
 public class BranchService {
 
     private final BranchRepository branchRepository;
@@ -21,7 +21,7 @@ public class BranchService {
 
     public BranchDTO saveBranch(BranchDTO dto) {
         Company company = companyRepository.findById(dto.getCompanyId())
-                .orElseThrow(() -> new RuntimeException("Company not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + dto.getCompanyId()));
 
         Branch branch = new Branch();
         branch.setCode(dto.getCode());
@@ -51,4 +51,3 @@ public class BranchService {
         }).collect(Collectors.toList());
     }
 }
-

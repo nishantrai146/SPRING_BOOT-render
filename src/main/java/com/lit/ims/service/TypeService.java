@@ -32,7 +32,8 @@ public class TypeService {
                 String lastSeq = lastTrno.substring(lastTrno.length() - 3);
                 try {
                     nextSequence = Integer.parseInt(lastSeq) + 1;
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException ignored) {
+                }
             }
         }
 
@@ -42,7 +43,7 @@ public class TypeService {
     // ✅ Save
     public TypeMasterDTO save(TypeMasterDTO dto, Long companyId, Long branchId) {
         if (repository.existsByNameAndCompanyIdAndBranchId(dto.getName(), companyId, branchId)) {
-            throw new RuntimeException("Type Name Already Exists in this Branch");
+            throw new IllegalArgumentException("Type name already exists in this branch.");
         }
 
         String trno = generateTrno(companyId, branchId);
@@ -60,13 +61,14 @@ public class TypeService {
     }
 
     // ✅ Update
+    @Transactional
     public TypeMasterDTO update(Long id, TypeMasterDTO dto, Long companyId, Long branchId) {
         TypeMaster type = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Type not found with ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Type not found with ID: " + id));
 
-        if (!type.getName().equals(dto.getName()) &&
+        if (!type.getName().equalsIgnoreCase(dto.getName()) &&
                 repository.existsByNameAndCompanyIdAndBranchId(dto.getName(), companyId, branchId)) {
-            throw new RuntimeException("Type Name Already Exists in this Branch");
+            throw new IllegalArgumentException("Type name already exists in this branch.");
         }
 
         type.setName(dto.getName());
@@ -79,7 +81,7 @@ public class TypeService {
     // ✅ Get One
     public TypeMasterDTO getOne(Long id) {
         TypeMaster type = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Type not found with ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Type not found with ID: " + id));
         return mapToDTO(type);
     }
 
@@ -95,7 +97,7 @@ public class TypeService {
     @Transactional
     public void delete(Long id) {
         if (!repository.existsById(id)) {
-            throw new RuntimeException("Type not found with ID: " + id);
+            throw new IllegalArgumentException("Type not found with ID: " + id);
         }
         repository.deleteById(id);
     }
@@ -104,9 +106,15 @@ public class TypeService {
     @Transactional
     public void deleteMultiple(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
-            throw new RuntimeException("No IDs provided for deletion");
+            throw new IllegalArgumentException("No IDs provided for deletion.");
         }
-        repository.deleteAllById(ids);
+
+        List<TypeMaster> types = repository.findAllById(ids);
+        if (types.isEmpty()) {
+            throw new IllegalArgumentException("No matching Types found for provided IDs.");
+        }
+
+        repository.deleteAll(types);
     }
 
     // ✅ Map Entity to DTO
@@ -126,7 +134,7 @@ public class TypeService {
                 .orElse("Unknown TRNO");
     }
 
-    // ✅ Get TRNO list by multiple IDs
+    // ✅ Get TRNOs by IDs
     public List<String> getTrnosByIds(List<Long> ids) {
         return repository.findAllById(ids)
                 .stream()

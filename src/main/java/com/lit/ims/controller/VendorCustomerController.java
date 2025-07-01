@@ -2,77 +2,74 @@ package com.lit.ims.controller;
 
 import com.lit.ims.dto.VendorCustomerDTO;
 import com.lit.ims.entity.VendorCustomer;
+import com.lit.ims.response.ApiResponse;
 import com.lit.ims.service.VendorCustomerService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/vendor-customer")
+@RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class VendorCustomerController {
 
-    @Autowired
-    private VendorCustomerService service;
+    private final VendorCustomerService service;
 
     // ✅ Create
     @PostMapping("/add")
-    public ResponseEntity<VendorCustomer> add(@Valid @RequestBody VendorCustomerDTO dto,
-                                              @RequestAttribute("companyId") Long companyId,
-                                              @RequestAttribute("branchId") Long branchId) {
+    public ResponseEntity<ApiResponse<VendorCustomer>> add(@Valid @RequestBody VendorCustomerDTO dto,
+                                                           @RequestAttribute("companyId") Long companyId,
+                                                           @RequestAttribute("branchId") Long branchId) {
         VendorCustomer saved = service.add(dto, companyId, branchId);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Business Partner added successfully", saved));
     }
 
-    // ✅ Get All for company & branch
+    // ✅ Get All
     @GetMapping("/all")
-    public ResponseEntity<Map<String,Object>> getAll(@RequestAttribute("companyId") Long companyId,
-                                                       @RequestAttribute("branchId") Long branchId) {
+    public ResponseEntity<ApiResponse<List<VendorCustomer>>> getAll(@RequestAttribute("companyId") Long companyId,
+                                                                    @RequestAttribute("branchId") Long branchId) {
         List<VendorCustomer> list = service.getAll(companyId, branchId);
-
-        Map<String,Object> response=new HashMap<>();
-        response.put("businessPartner",list);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", list));
     }
 
     // ✅ Get by ID
     @GetMapping("/get/{id}")
-    public ResponseEntity<VendorCustomer> getById(@PathVariable Long id,
-                                                  @RequestAttribute("companyId") Long companyId,
-                                                  @RequestAttribute("branchId") Long branchId) {
+    public ResponseEntity<ApiResponse<VendorCustomer>> getById(@PathVariable Long id,
+                                                               @RequestAttribute("companyId") Long companyId,
+                                                               @RequestAttribute("branchId") Long branchId) {
         VendorCustomer vc = service.getById(id, companyId, branchId);
-        return ResponseEntity.ok(vc);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched successfully", vc));
     }
 
     // ✅ Update
     @PutMapping("/update/{id}")
-    public ResponseEntity<VendorCustomer> update(@PathVariable Long id,
-                                                 @Valid @RequestBody VendorCustomerDTO dto,
-                                                 @RequestAttribute("companyId") Long companyId,
-                                                 @RequestAttribute("branchId") Long branchId) {
+    public ResponseEntity<ApiResponse<VendorCustomer>> update(@PathVariable Long id,
+                                                              @Valid @RequestBody VendorCustomerDTO dto,
+                                                              @RequestAttribute("companyId") Long companyId,
+                                                              @RequestAttribute("branchId") Long branchId) {
         VendorCustomer updated = service.update(id, dto, companyId, branchId);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Updated successfully", updated));
     }
 
     // ✅ Delete
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id,
-                                    @RequestAttribute("companyId") Long companyId,
-                                    @RequestAttribute("branchId") Long branchId) {
+    public ResponseEntity<ApiResponse<String>> delete(@PathVariable Long id,
+                                                      @RequestAttribute("companyId") Long companyId,
+                                                      @RequestAttribute("branchId") Long branchId) {
         service.delete(id, companyId, branchId);
-        return ResponseEntity.ok("Deleted successfully");
+        return ResponseEntity.ok(new ApiResponse<>(true, "Deleted successfully", null));
     }
 
     // ✅ Delete Multiple
     @DeleteMapping("/delete-multiple")
-    public ResponseEntity<?> deleteMultiple(@RequestBody List<Long> ids,
-                                            @RequestAttribute("companyId") Long companyId,
-                                            @RequestAttribute("branchId") Long branchId) {
+    public ResponseEntity<ApiResponse<String>> deleteMultiple(@RequestBody List<Long> ids,
+                                                              @RequestAttribute("companyId") Long companyId,
+                                                              @RequestAttribute("branchId") Long branchId) {
         service.deleteMultiple(ids, companyId, branchId);
-        return ResponseEntity.ok("Deleted successfully");
+        return ResponseEntity.ok(new ApiResponse<>(true, "Deleted successfully", null));
     }
 }

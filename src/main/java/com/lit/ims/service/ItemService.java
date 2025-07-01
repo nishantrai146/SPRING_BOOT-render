@@ -18,10 +18,13 @@ public class ItemService {
 
     // ✅ Create Item
     public Item saveItem(ItemDTO request, Long companyId, Long branchId) {
-        if (itemRepository.existsByCodeAndCompanyIdAndBranchId(request.getCode(), companyId, branchId)) {
+        boolean exists = itemRepository.existsByCodeAndCompanyIdAndBranchId(
+                request.getCode(), companyId, branchId
+        );
+
+        if (exists) {
             throw new RuntimeException("Item code already exists in this branch.");
         }
-
 
         Item item = Item.builder()
                 .name(request.getName())
@@ -58,25 +61,31 @@ public class ItemService {
 
     // ✅ Update Item
     public Optional<Item> updateItem(Long id, ItemDTO dto, Long companyId, Long branchId) {
-        return itemRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId).map(item -> {
-            item.setName(dto.getName());
-            item.setCode(dto.getCode());
-            item.setUom(dto.getUom());
-            item.setType(dto.getType());
-            item.setBarcode(dto.getBarcode());
-            item.setGroupName(dto.getGroupName());
-            item.setStatus(dto.getStatus());
-            item.setPrice(dto.getPrice());
-            item.setStQty(dto.getStQty());
-            item.setLife(dto.getLife());
+        return itemRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
+                .map(item -> {
+                    if (!item.getCode().equals(dto.getCode()) &&
+                            itemRepository.existsByCodeAndCompanyIdAndBranchId(dto.getCode(), companyId, branchId)) {
+                        throw new RuntimeException("Item code already exists in this branch.");
+                    }
 
-            Item updated = itemRepository.save(item);
+                    item.setName(dto.getName());
+                    item.setCode(dto.getCode());
+                    item.setUom(dto.getUom());
+                    item.setType(dto.getType());
+                    item.setBarcode(dto.getBarcode());
+                    item.setGroupName(dto.getGroupName());
+                    item.setStatus(dto.getStatus());
+                    item.setPrice(dto.getPrice());
+                    item.setStQty(dto.getStQty());
+                    item.setLife(dto.getLife());
 
-            transactionLogService.log("UPDATE", "Item", updated.getId(),
-                    "Updated item with code: " + updated.getCode());
+                    Item updated = itemRepository.save(item);
 
-            return updated;
-        });
+                    transactionLogService.log("UPDATE", "Item", updated.getId(),
+                            "Updated item with code: " + updated.getCode());
+
+                    return updated;
+                });
     }
 
     // ✅ Delete Single Item
@@ -89,8 +98,9 @@ public class ItemService {
                     "Deleted item with ID: " + id);
 
             return true;
+        } else {
+            throw new RuntimeException("Item not found");
         }
-        return false;
     }
 
     // ✅ Delete Multiple Items
@@ -98,6 +108,10 @@ public class ItemService {
         List<Item> items = itemRepository.findAllById(ids).stream()
                 .filter(item -> item.getCompanyId().equals(companyId) && item.getBranchId().equals(branchId))
                 .toList();
+
+        if (items.isEmpty()) {
+            throw new RuntimeException("No valid items found to delete.");
+        }
 
         itemRepository.deleteAll(items);
 

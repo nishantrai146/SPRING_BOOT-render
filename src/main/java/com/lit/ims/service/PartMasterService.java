@@ -6,6 +6,7 @@ import com.lit.ims.repository.PartMasterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,7 +18,7 @@ public class PartMasterService {
     private final PartMasterRepository partRepo;
     private final TransactionLogService logService;
 
-    // ✅ Mapper: Entity → DTO
+    // ✅ Entity → DTO
     private PartMasterDTO convertToDTO(PartMaster entity) {
         return PartMasterDTO.builder()
                 .id(entity.getId())
@@ -28,7 +29,7 @@ public class PartMasterService {
                 .build();
     }
 
-    // ✅ Mapper: DTO → Entity
+    // ✅ DTO → Entity
     private PartMaster convertToEntity(PartMasterDTO dto, Long companyId, Long branchId) {
         return PartMaster.builder()
                 .id(dto.getId())
@@ -42,13 +43,14 @@ public class PartMasterService {
     }
 
     // ✅ Create
+    @Transactional
     public PartMasterDTO savePart(PartMasterDTO dto, Long companyId, Long branchId) {
         if (partRepo.existsByCodeAndCompanyIdAndBranchId(dto.getCode(), companyId, branchId)) {
-            throw new DataIntegrityViolationException("Part code already exists");
+            throw new DataIntegrityViolationException("Part code already exists in this branch.");
         }
 
         if (partRepo.existsByNameAndCompanyIdAndBranchId(dto.getName(), companyId, branchId)) {
-            throw new DataIntegrityViolationException("Part name already exists");
+            throw new DataIntegrityViolationException("Part name already exists in this branch.");
         }
 
         PartMaster saved = partRepo.save(convertToEntity(dto, companyId, branchId));
@@ -64,9 +66,20 @@ public class PartMasterService {
     }
 
     // ✅ Update
+    @Transactional
     public PartMasterDTO updatePart(Long id, PartMasterDTO dto, Long companyId, Long branchId) {
         PartMaster existing = partRepo.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
-                .orElseThrow(() -> new RuntimeException("Part not found with ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Part not found with ID: " + id));
+
+        if (!existing.getCode().equalsIgnoreCase(dto.getCode()) &&
+                partRepo.existsByCodeAndCompanyIdAndBranchId(dto.getCode(), companyId, branchId)) {
+            throw new DataIntegrityViolationException("Part code already exists in this branch.");
+        }
+
+        if (!existing.getName().equalsIgnoreCase(dto.getName()) &&
+                partRepo.existsByNameAndCompanyIdAndBranchId(dto.getName(), companyId, branchId)) {
+            throw new DataIntegrityViolationException("Part name already exists in this branch.");
+        }
 
         existing.setCode(dto.getCode());
         existing.setName(dto.getName());
@@ -95,7 +108,7 @@ public class PartMasterService {
     // ✅ Get by ID
     public PartMasterDTO getPartById(Long id, Long companyId, Long branchId) {
         PartMaster entity = partRepo.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
-                .orElseThrow(() -> new RuntimeException("Part not found with ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Part not found with ID: " + id));
 
         logService.log(
                 "VIEW",
@@ -107,12 +120,13 @@ public class PartMasterService {
         return convertToDTO(entity);
     }
 
-    // ✅ Delete
+    // ✅ Delete Single
+    @Transactional
     public void deletePart(Long id, Long companyId, Long branchId) {
         PartMaster part = partRepo.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
-                .orElseThrow(() -> new RuntimeException("Part not found with ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Part not found with ID: " + id));
 
-        partRepo.deleteById(id);
+        partRepo.delete(part);
 
         logService.log(
                 "DELETE",
@@ -123,13 +137,14 @@ public class PartMasterService {
     }
 
     // ✅ Delete Multiple
+    @Transactional
     public void deleteMultiple(List<Long> ids, Long companyId, Long branchId) {
         List<PartMaster> parts = partRepo.findAllById(ids).stream()
                 .filter(p -> p.getCompanyId().equals(companyId) && p.getBranchId().equals(branchId))
                 .collect(Collectors.toList());
 
         if (parts.isEmpty()) {
-            throw new RuntimeException("No parts found to delete.");
+            throw new IllegalArgumentException("No matching parts found to delete.");
         }
 
         partRepo.deleteAll(parts);

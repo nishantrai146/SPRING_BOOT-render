@@ -2,6 +2,7 @@ package com.lit.ims.service;
 
 import com.lit.ims.dto.CompanyDTO;
 import com.lit.ims.entity.Company;
+import com.lit.ims.exception.ResourceNotFoundException;
 import com.lit.ims.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,9 +13,15 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class CompanyService {
+
     private final CompanyRepository companyRepository;
 
     public CompanyDTO saveCompany(CompanyDTO dto) {
+        // Check if company code already exists
+        if (companyRepository.findByCode(dto.getCode()).isPresent()) {
+            throw new ResourceNotFoundException("Company code already exists: " + dto.getCode());
+        }
+
         Company company = new Company();
         company.setCode(dto.getCode());
         company.setName(dto.getName());

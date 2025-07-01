@@ -2,6 +2,8 @@ package com.lit.ims.service;
 
 import com.lit.ims.dto.GroupMasterDTO;
 import com.lit.ims.entity.GroupMaster;
+import com.lit.ims.exception.DuplicateResourceException;
+import com.lit.ims.exception.ResourceNotFoundException;
 import com.lit.ims.repository.GroupMasterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -37,7 +39,7 @@ public class GroupMasterService {
     // ✅ Save
     public GroupMasterDTO save(GroupMasterDTO dto, Long companyId, Long branchId) {
         if (groupRepo.existsByNameAndCompanyIdAndBranchId(dto.getName(), companyId, branchId)) {
-            throw new RuntimeException("Group name already exists.");
+            throw new DuplicateResourceException("Group name already exists.");
         }
 
         String trno = generateTrno(companyId, branchId);
@@ -57,7 +59,7 @@ public class GroupMasterService {
     // ✅ Update
     public GroupMasterDTO update(Long id, GroupMasterDTO dto, Long companyId, Long branchId) {
         GroupMaster group = groupRepo.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
-                .orElseThrow(() -> new RuntimeException("Group not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Group not found with id: " + id));
 
         group.setName(dto.getName());
         group.setStatus(dto.getStatus());
@@ -69,7 +71,7 @@ public class GroupMasterService {
     // ✅ Get One
     public GroupMasterDTO getOne(Long id, Long companyId, Long branchId) {
         GroupMaster group = groupRepo.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
-                .orElseThrow(() -> new RuntimeException("Group not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Group not found with id: " + id));
 
         return mapToDTO(group);
     }
@@ -85,7 +87,8 @@ public class GroupMasterService {
     // ✅ Delete
     public void delete(Long id, Long companyId, Long branchId) {
         GroupMaster group = groupRepo.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
-                .orElseThrow(() -> new RuntimeException("Group not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Group not found with id: " + id));
+
         groupRepo.delete(group);
     }
 
@@ -96,7 +99,7 @@ public class GroupMasterService {
                 .collect(Collectors.toList());
 
         if (groups.isEmpty()) {
-            throw new RuntimeException("No records found to delete.");
+            throw new ResourceNotFoundException("No valid groups found for deletion.");
         }
 
         groupRepo.deleteAll(groups);
