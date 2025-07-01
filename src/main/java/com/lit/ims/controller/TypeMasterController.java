@@ -67,7 +67,7 @@ public class TypeMasterController {
         List<TypeMasterDTO> list = service.getAll(companyId, branchId);
 
         return ResponseEntity.ok(
-                Map.of("types", list)  // ✅ Key name 'types'
+                Map.of("types", list)
         );
     }
 
