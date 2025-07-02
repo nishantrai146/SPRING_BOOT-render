@@ -31,16 +31,32 @@ public class UserController {
         return userService.createUser(request, companyId, branchId);
     }
 
-    // ✅ Check Role (Debugging)
-    @GetMapping("/check-role")
-    public ResponseEntity<ApiResponse> checkRole() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String info = "Current user: " + auth.getName() + ", Roles: " + auth.getAuthorities();
-        return ResponseEntity.ok(ApiResponse.builder()
-                .status(true)
-                .message("Fetched current user roles")
-                .data(info)
-                .build());
+    // ✅ Get User by ID
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_OWNER')")
+    public ResponseEntity<ApiResponse> getUserById(@PathVariable Long id,
+                                                   @RequestAttribute("companyId") Long companyId,
+                                                   @RequestAttribute("branchId") Long branchId) {
+        return userService.getUserById(id, companyId, branchId);
+    }
+
+    // ✅ Update User
+    @PutMapping("/update/{id}")
+    @PreAuthorize("hasAuthority('ROLE_OWNER')")
+    public ResponseEntity<ApiResponse> updateUser(@PathVariable Long id,
+                                                  @RequestBody CreateUserRequest request,
+                                                  @RequestAttribute("companyId") Long companyId,
+                                                  @RequestAttribute("branchId") Long branchId) {
+        return userService.updateUser(id, request, companyId, branchId);
+    }
+
+    // ✅ Delete User
+    @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasAuthority('ROLE_OWNER')")
+    public ResponseEntity<ApiResponse> deleteUser(@PathVariable Long id,
+                                                  @RequestAttribute("companyId") Long companyId,
+                                                  @RequestAttribute("branchId") Long branchId) {
+        return userService.deleteUser(id, companyId, branchId);
     }
 
     // ✅ Get All Staff Users (ADMIN, MANAGER, USER)
@@ -52,12 +68,15 @@ public class UserController {
         return userService.getUsersByRolesAndCompanyBranch(staffRoles, companyId, branchId);
     }
 
-    // ✅ Delete User
-    @DeleteMapping("/delete/{id}")
-    @PreAuthorize("hasAuthority('ROLE_OWNER')")
-    public ResponseEntity<ApiResponse> deleteUser(@PathVariable Long id,
-                                                  @RequestAttribute("companyId") Long companyId,
-                                                  @RequestAttribute("branchId") Long branchId) {
-        return userService.deleteUser(id, companyId, branchId);
+    // ✅ Debug API - Check Current Role and Authentication
+    @GetMapping("/check-role")
+    public ResponseEntity<ApiResponse> checkRole() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String info = "Current user: " + auth.getName() + ", Roles: " + auth.getAuthorities();
+        return ResponseEntity.ok(ApiResponse.builder()
+                .status(true)
+                .message("Fetched current user roles")
+                .data(info)
+                .build());
     }
 }

@@ -16,16 +16,37 @@ public class VendorCustomerService {
     private final VendorCustomerRepo repository;
     private final TransactionLogService logService;
 
+    // ✅ Generate Code
+    public String generateCode(String type, Long companyId, Long branchId) {
+        String prefix = type.equalsIgnoreCase("Vendor") ? "VN" : "CU";
+
+        String maxCode = repository.findMaxCodeByTypeAndCompanyIdAndBranchId(type, companyId, branchId);
+
+        int nextNumber = 1;
+        if (maxCode != null) {
+            try {
+                String numberPart = maxCode.substring(2); // Skip 'VN' or 'CU'
+                nextNumber = Integer.parseInt(numberPart) + 1;
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        return String.format("%s%04d", prefix, nextNumber);
+    }
+
     // ✅ Create
     public VendorCustomer add(VendorCustomerDTO dto, Long companyId, Long branchId) {
+        String code = generateCode(dto.getType(), companyId, branchId);
+
         VendorCustomer vc = VendorCustomer.builder()
+                .code(code)
                 .type(dto.getType())
                 .name(dto.getName())
                 .mobile(dto.getMobile())
                 .email(dto.getEmail())
+                .address(dto.getAddress())
                 .city(dto.getCity())
                 .state(dto.getState())
-                .address(dto.getAddress())
                 .pincode(dto.getPincode())
                 .status(dto.getStatus())
                 .companyId(companyId)
@@ -35,7 +56,7 @@ public class VendorCustomerService {
         VendorCustomer saved = repository.save(vc);
 
         logService.log("CREATE", "VendorCustomer", saved.getId(),
-                "Created " + saved.getType() + ": " + saved.getName());
+                "Created " + saved.getType() + ": " + saved.getName() + " with code " + saved.getCode());
 
         return saved;
     }
@@ -45,7 +66,7 @@ public class VendorCustomerService {
         return repository.findByCompanyIdAndBranchId(companyId, branchId);
     }
 
-    // ✅ Get by ID with company/branch filter
+    // ✅ Get by ID
     public VendorCustomer getById(Long id, Long companyId, Long branchId) {
         return repository.findById(id)
                 .filter(vc -> vc.getCompanyId().equals(companyId) && vc.getBranchId().equals(branchId))
@@ -101,4 +122,11 @@ public class VendorCustomerService {
         customers.forEach(vc -> logService.log("DELETE", "VendorCustomer", vc.getId(),
                 "Deleted " + vc.getType() + ": " + vc.getName()));
     }
+
+    // ✅ Get Only Vendors
+    @Transactional
+    public List<VendorCustomer> getAllVendors(Long companyId, Long branchId) {
+        return repository.findByTypeAndCompanyIdAndBranchId("Vendor", companyId, branchId);
+    }
+
 }

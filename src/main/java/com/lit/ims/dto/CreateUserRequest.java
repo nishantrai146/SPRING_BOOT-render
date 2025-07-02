@@ -10,6 +10,7 @@ public class CreateUserRequest {
     private String password;
     private String role;
     private String branch;
+    private String status;
     private String department;
     private Long companyId;
     private List<PermissionDto> permissions;

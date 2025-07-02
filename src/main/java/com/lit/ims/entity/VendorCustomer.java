@@ -1,11 +1,7 @@
 package com.lit.ims.entity;
 
-
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
 @Entity
@@ -14,9 +10,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class VendorCustomer {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String code;
+
     private String type;
     private String name;
     private String mobile;
@@ -26,6 +27,7 @@ public class VendorCustomer {
     private String state;
     private String pincode;
     private String status;
+
     @Column(name = "company_id", nullable = false)
     private Long companyId;
 

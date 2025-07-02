@@ -72,4 +72,14 @@ public class VendorCustomerController {
         service.deleteMultiple(ids, companyId, branchId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Deleted successfully", null));
     }
+    // ✅ Get All Vendors
+    @GetMapping("/vendors")
+    public ResponseEntity<ApiResponse<List<VendorCustomer>>> getAllVendors(
+            @RequestAttribute("companyId") Long companyId,
+            @RequestAttribute("branchId") Long branchId
+    ) {
+        List<VendorCustomer> vendors = service.getAllVendors(companyId, branchId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Vendors fetched successfully", vendors));
+    }
+
 }

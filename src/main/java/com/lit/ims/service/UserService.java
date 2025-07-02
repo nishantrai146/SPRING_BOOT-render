@@ -112,7 +112,7 @@ public class UserService {
         user.setPassword(encoder.encode(req.getPassword()));
         user.setRole(selectedRole);
         user.setDepartment(req.getDepartment());
-        user.setStatus(Status.ACTIVE);
+        user.setStatus(Status.valueOf(req.getStatus().toUpperCase()));
         user.setLastLoginIp(request.getRemoteAddr());
         user.setLastLoginDateTime(LocalDateTime.now());
         user.setCompany(company);
@@ -166,9 +166,17 @@ public class UserService {
                 .lastLoginDateTime(user.getLastLoginDateTime())
                 .lastLoginIp(user.getLastLoginIp())
                 .companyId(user.getCompany() != null ? user.getCompany().getId() : null)
-                .branchIds(user.getBranches() != null
-                        ? user.getBranches().stream().map(Branch::getId).collect(Collectors.toList())
-                        : Collections.emptyList())
+                .companyName(user.getCompany() != null ? user.getCompany().getName() : null)
+                .branchNames(user.getBranches() != null
+                        ? user.getBranches().stream().map(Branch::getName).toList()
+                        : List.of())
+                .permissions(user.getPermissions() != null
+                        ? user.getPermissions().stream().map(p -> PermissionDto.builder()
+                        .pageName(p.getPageName())
+                        .canView(p.isCanView())
+                        .canEdit(p.isCanEdit())
+                        .build()).toList()
+                        : List.of())
                 .build();
     }
 
@@ -197,4 +205,105 @@ public class UserService {
                 .data(null)
                 .build());
     }
+
+    public ResponseEntity<ApiResponse> getUserById(Long userId, Long companyId, Long branchId) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
+
+        if (!user.getCompany().getId().equals(companyId)) {
+            throw new RuntimeException("User does not belong to your company.");
+        }
+
+        boolean branchMatch = user.getBranches().stream()
+                .anyMatch(branch -> branch.getId().equals(branchId));
+        if (!branchMatch) {
+            throw new RuntimeException("User does not belong to your branch.");
+        }
+
+        logService.log("VIEW", "User", userId, "Fetched user details: " + user.getUsername());
+
+        UserDto dto = mapToDto(user);
+
+        return ResponseEntity.ok(ApiResponse.builder()
+                .status(true)
+                .message("User fetched successfully")
+                .data(dto)
+                .build());
+    }
+
+    public ResponseEntity<ApiResponse> updateUser(Long userId, CreateUserRequest req, Long companyId, Long branchId) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
+
+        if (!user.getCompany().getId().equals(companyId)) {
+            throw new RuntimeException("User does not belong to your company.");
+        }
+
+        boolean branchMatch = user.getBranches().stream()
+                .anyMatch(branch -> branch.getId().equals(branchId));
+        if (!branchMatch) {
+            throw new RuntimeException("User does not belong to your branch.");
+        }
+
+        // Update user fields
+        user.setEmail(req.getEmail());
+        user.setDepartment(req.getDepartment());
+        user.setStatus(Status.valueOf(req.getStatus().toUpperCase()));
+
+        if (req.getPassword() != null && !req.getPassword().isBlank()) {
+            user.setPassword(encoder.encode(req.getPassword()));
+        }
+
+        Role selectedRole;
+        try {
+            selectedRole = Role.valueOf(req.getRole().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Role must be ADMIN, MANAGER, or USER.");
+        }
+        user.setRole(selectedRole);
+
+        List<Branch> branches = new ArrayList<>();
+        if (req.getBranchIds() != null && !req.getBranchIds().isEmpty()) {
+            branches = branchRepo.findAllById(req.getBranchIds());
+            if (branches.isEmpty()) {
+                throw new RuntimeException("At least one valid branch must be selected.");
+            }
+            for (Branch b : branches) {
+                if (!b.getCompany().getId().equals(companyId)) {
+                    throw new RuntimeException("Branch " + b.getName() + " does not belong to the selected company.");
+                }
+            }
+        } else {
+            // If not provided, keep existing branches
+            branches = user.getBranches();
+        }
+
+        user.setBranches(branches);
+
+        // Delete old permissions
+        permRepo.deleteAll(user.getPermissions());
+
+        // Add new permissions
+        List<PagePermission> permissions = req.getPermissions().stream().map(dto -> {
+            PagePermission p = new PagePermission();
+            p.setPageName(dto.getPageName());
+            p.setCanView(dto.isCanView());
+            p.setCanEdit(dto.isCanEdit());
+            p.setUser(user);
+            return p;
+        }).collect(Collectors.toList());
+
+        user.setPermissions(permissions);
+
+        User saved = userRepo.save(user);
+
+        logService.log("UPDATE", "User", saved.getId(), "Updated user details: " + saved.getUsername());
+
+        return ResponseEntity.ok(ApiResponse.builder()
+                .status(true)
+                .message("User updated successfully")
+                .data(saved.getId())
+                .build());
+    }
+
 }

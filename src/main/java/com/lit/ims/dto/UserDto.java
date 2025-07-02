@@ -21,9 +21,10 @@ public class UserDto {
     private Role role;
     private String department;
     private Status status;
-    private LocalDateTime lastLoginDateTime;
     private String lastLoginIp;
+    private LocalDateTime lastLoginDateTime;
     private Long companyId;
     private String companyName;
-    private List<Long> branchIds;
-} 
+    private List<String> branchNames; // ✅ Instead of IDs
+    private List<PermissionDto> permissions; // ✅ Full permissions
+}
