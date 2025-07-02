@@ -59,6 +59,8 @@ public class UserController {
         return userService.deleteUser(id, companyId, branchId);
     }
 
+
+
     // ✅ Get All Staff Users (ADMIN, MANAGER, USER)
     @GetMapping("/all-staff")
     @PreAuthorize("hasAuthority('ROLE_OWNER')")
