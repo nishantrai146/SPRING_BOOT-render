@@ -167,8 +167,14 @@ public class UserService {
                 .lastLoginIp(user.getLastLoginIp())
                 .companyId(user.getCompany() != null ? user.getCompany().getId() : null)
                 .companyName(user.getCompany() != null ? user.getCompany().getName() : null)
-                .branchNames(user.getBranches() != null
-                        ? user.getBranches().stream().map(Branch::getName).toList()
+                .branches(user.getBranches() != null
+                        ? user.getBranches().stream()
+                        .map(branch -> BranchInfoDto.builder()
+                                .id(branch.getId())
+                                .name(branch.getName())
+                                .code(branch.getCode())
+                                .build())
+                        .collect(Collectors.toList())
                         : List.of())
                 .permissions(user.getPermissions() != null
                         ? user.getPermissions().stream().map(p -> PermissionDto.builder()

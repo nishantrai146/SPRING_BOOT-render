@@ -25,6 +25,6 @@ public class UserDto {
     private LocalDateTime lastLoginDateTime;
     private Long companyId;
     private String companyName;
-    private List<String> branchNames; // ✅ Instead of IDs
-    private List<PermissionDto> permissions; // ✅ Full permissions
+    private List<BranchInfoDto> branches;
+    private List<PermissionDto> permissions;
 }
