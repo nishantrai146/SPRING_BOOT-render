@@ -35,7 +35,7 @@ public class User {
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
-    @OneToMany(mappedBy = "user",cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PagePermission> permissions;
 
     @ManyToMany(fetch = FetchType.LAZY)

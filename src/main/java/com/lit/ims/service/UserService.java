@@ -286,11 +286,14 @@ public class UserService {
 
         user.setBranches(branches);
 
-        // Delete old permissions
-        permRepo.deleteAll(user.getPermissions());
+        // ✅ Clear and replace permissions (orphan-safe)
+        if (user.getPermissions() == null) {
+            user.setPermissions(new ArrayList<>());
+        } else {
+            user.getPermissions().clear(); // Orphan-safe removal
+        }
 
-        // Add new permissions
-        List<PagePermission> permissions = req.getPermissions().stream().map(dto -> {
+        List<PagePermission> newPermissions = req.getPermissions().stream().map(dto -> {
             PagePermission p = new PagePermission();
             p.setPageName(dto.getPageName());
             p.setCanView(dto.isCanView());
@@ -299,7 +302,7 @@ public class UserService {
             return p;
         }).collect(Collectors.toList());
 
-        user.setPermissions(permissions);
+        user.getPermissions().addAll(newPermissions);
 
         User saved = userRepo.save(user);
 
