@@ -1,6 +1,7 @@
 package com.lit.ims.controller;
 
 import com.lit.ims.dto.VendorItemsMasterDTO;
+import com.lit.ims.entity.Item;
 import com.lit.ims.response.ApiResponse;
 import com.lit.ims.service.VendorItemsMasterService;
 import lombok.RequiredArgsConstructor;
@@ -68,5 +69,14 @@ public class VendorItemsMasterController {
                                                               @RequestAttribute("branchId") Long branchId) {
         service.deleteMultiple(ids, companyId, branchId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Vendor Items deleted successfully", null));
+    }
+
+    @GetMapping("/items/{vendorCode}")
+    public ResponseEntity<ApiResponse<List<VendorItemsMasterDTO>>> getItemByVendorCode(
+            @PathVariable String vendorCode,
+            @RequestAttribute("companyId") Long companyId,
+            @RequestAttribute("branchId") Long branchId) {
+        List<VendorItemsMasterDTO> result=service.getItemByVendor(vendorCode,companyId,branchId);
+        return ResponseEntity.ok(new ApiResponse<>(true,"Fetched Vendor Items",result));
     }
 }

@@ -164,4 +164,16 @@ public class VendorItemsMasterService {
                 "Deleted VendorItems with IDs: " + ids + " and VendorCodes: " + codes
         );
     }
+    @Transactional
+    public List<VendorItemsMasterDTO> getItemByVendor(String vendorCode,Long companyId,Long branchId){
+        List<VendorItemsMaster> items=repository.findByVendorCodeAndCompanyIdAndBranchId(vendorCode,companyId,branchId);
+
+        if(items.isEmpty()){
+            throw new IllegalArgumentException("No items found for Vendor Code: " + vendorCode);
+        }
+
+        return items.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
 }
