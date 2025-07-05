@@ -88,7 +88,7 @@ public class MaterialReceiptService {
 
     public String generateBatchNumber(String vendorCode, String itemCode,String quantity, Long companyId, Long branchId) {
         String prefix = "M" + vendorCode + itemCode + quantity+
-                LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
+                LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy"));
 
         String last = receiptRepo.findMaxBatchNoWithPrefix(prefix);
         int next = 1;
