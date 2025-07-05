@@ -35,8 +35,8 @@ public class MaterialReceiptService {
 
         List<MaterialReceiptItem> items = dto.getItems().stream().map(item ->
                 MaterialReceiptItem.builder()
-                        .name(item.getName())
-                        .code(item.getCode())
+                        .itemName(item.getItemName())
+                        .itemCode(item.getItemCode())
                         .quantity(item.getQuantity())
                         .batchNo(item.getBatchNo())
                         .receipt(receipt)
@@ -55,8 +55,8 @@ public class MaterialReceiptService {
         dto.setVendorCode(receipt.getVendorCode());
         dto.setItems(receipt.getItems().stream().map(item -> {
             MaterialReceiptItemDTO i = new MaterialReceiptItemDTO();
-            i.setName(item.getName());
-            i.setCode(item.getCode());
+            i.setItemName(item.getItemName());
+            i.setItemCode(item.getItemCode());
             i.setQuantity(item.getQuantity());
             i.setBatchNo(item.getBatchNo());
             return i;

@@ -19,9 +19,10 @@ public class MaterialReceiptItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    private String name;
-    private String code;
+    @Column(nullable = false)
+    private String itemName;
+    @Column(nullable = false)
+    private String itemCode;
     private Integer quantity;
     @Column(nullable = false)
     private String batchNo;

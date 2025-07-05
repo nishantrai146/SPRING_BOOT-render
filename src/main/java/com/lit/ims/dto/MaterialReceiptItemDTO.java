@@ -4,8 +4,8 @@ import lombok.Data;
 
 @Data
 public class MaterialReceiptItemDTO {
-    private String name;
-    private String code;
+    private String itemName;
+    private String itemCode;
     private Integer quantity;
     private String batchNo;
 }
