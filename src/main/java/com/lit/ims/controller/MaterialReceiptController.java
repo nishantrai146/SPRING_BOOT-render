@@ -36,8 +36,9 @@ public class MaterialReceiptController {
     @PostMapping("/generate-batch")
     public ResponseEntity<String> generateBatch(@RequestParam String vendorCode,
                                                 @RequestParam String itemCode,
+                                                @RequestParam String quantity,
                                                 @RequestAttribute("companyId") Long companyId,
                                                 @RequestAttribute("branchId") Long branchId) {
-        return ResponseEntity.ok(receiptService.generateBatchNumber(vendorCode, itemCode, companyId, branchId));
+        return ResponseEntity.ok(receiptService.generateBatchNumber(vendorCode, itemCode, quantity,companyId, branchId));
     }
 }

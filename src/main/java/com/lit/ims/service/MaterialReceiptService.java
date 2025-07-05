@@ -86,8 +86,8 @@ public class MaterialReceiptService {
         return new ApiResponse<>(true, "Receipts fetched successfully", list);
     }
 
-    public String generateBatchNumber(String vendorCode, String itemCode, Long companyId, Long branchId) {
-        String prefix = "M" + vendorCode + itemCode +
+    public String generateBatchNumber(String vendorCode, String itemCode,String quantity, Long companyId, Long branchId) {
+        String prefix = "M" + vendorCode + itemCode + quantity+
                 LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
 
         String last = receiptRepo.findMaxBatchNoWithPrefix(prefix);
