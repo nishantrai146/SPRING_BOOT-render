@@ -14,6 +14,7 @@ public class PendingQcItemsDTO {
     private String batchNumber;
     private String vendorName;
     private String vendorCode;
+    private String status;
     @JsonFormat(pattern = "dd-MM-yyyy hh:mm:ss a")
     private LocalDateTime createdAt;
 
