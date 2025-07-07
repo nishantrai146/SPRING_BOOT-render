@@ -2,6 +2,7 @@ package com.lit.ims.controller;
 
 import com.lit.ims.dto.MaterialReceiptDTO;
 import com.lit.ims.dto.MaterialReceiptItemDTO;
+import com.lit.ims.dto.PendingQcItemsDTO;
 import com.lit.ims.response.ApiResponse;
 import com.lit.ims.service.MaterialReceiptService;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +22,8 @@ public class MaterialReceiptController {
     // ✅ Save Receipt
     @PostMapping("/save")
     public ResponseEntity<ApiResponse<MaterialReceiptDTO>> saveReceipt(@RequestBody MaterialReceiptDTO dto,
-                                                           @RequestAttribute("companyId") Long companyId,
-                                                           @RequestAttribute("branchId") Long branchId) {
+                                                                       @RequestAttribute("companyId") Long companyId,
+                                                                       @RequestAttribute("branchId") Long branchId) {
         return ResponseEntity.ok(receiptService.saveReceipt(dto, companyId, branchId));
     }
 
@@ -40,13 +41,22 @@ public class MaterialReceiptController {
                                                 @RequestParam String quantity,
                                                 @RequestAttribute("companyId") Long companyId,
                                                 @RequestAttribute("branchId") Long branchId) {
-        return ResponseEntity.ok(receiptService.generateBatchNumber(vendorCode, itemCode, quantity,companyId, branchId));
+        return ResponseEntity.ok(receiptService.generateBatchNumber(vendorCode, itemCode, quantity, companyId, branchId));
     }
+
     @GetMapping("/verify-batch")
     public ResponseEntity<ApiResponse<MaterialReceiptItemDTO>> verifyBatchNo(
             @RequestParam String batchNo,
             @RequestAttribute("companyId") Long companyId,
             @RequestAttribute("branchId") Long branchId) {
         return ResponseEntity.ok(receiptService.verifyBatchNumber(batchNo, companyId, branchId));
+    }
+
+    @GetMapping("/pending-qc")
+    public ApiResponse<List<PendingQcItemsDTO>> getPendingQCItems(
+            @RequestAttribute("companyId") Long companyId,
+            @RequestAttribute("branchId") Long branchId
+    ) {
+        return receiptService.getPendingQcItems(companyId,branchId);
     }
 }

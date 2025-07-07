@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Data
 @NoArgsConstructor
@@ -13,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @Table(
         name = "material_receipt_items",
-        uniqueConstraints = @UniqueConstraint(columnNames = "batchNo")  // ✅ Uniqueness enforced here
+        uniqueConstraints = @UniqueConstraint(columnNames = "batchNo")
 )
 public class MaterialReceiptItem {
     @Id
@@ -31,7 +33,17 @@ public class MaterialReceiptItem {
     @JoinColumn
     private MaterialReceipt receipt;
 
-    @Column(nullable = false)
-    private String qc_status;
+    @Column(nullable = false,name = "qc_status")
+    private String qcStatus;
+
+    @Column(nullable = false, updatable = false)
+
+    private LocalDateTime createdAt;
+
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 
 }

@@ -2,9 +2,11 @@ package com.lit.ims.service;
 
 import com.lit.ims.dto.MaterialReceiptDTO;
 import com.lit.ims.dto.MaterialReceiptItemDTO;
+import com.lit.ims.dto.PendingQcItemsDTO;
 import com.lit.ims.entity.MaterialReceipt;
 import com.lit.ims.entity.MaterialReceiptItem;
 import com.lit.ims.entity.VendorItemsMaster;
+import com.lit.ims.repository.MaterialReceiptItemRepository;
 import com.lit.ims.repository.MaterialReceiptRepository;
 import com.lit.ims.repository.VendorItemsMasterRepository;
 import com.lit.ims.response.ApiResponse;
@@ -28,6 +30,7 @@ public class MaterialReceiptService {
     private final MaterialReceiptRepository receiptRepo;
     private final VendorItemsMasterRepository vendorItemsRepo;
     private final TransactionLogService logService;
+    private final MaterialReceiptItemRepository materialReceiptItemRepository;
 
     // DTO → Entity
     private MaterialReceipt toEntity(MaterialReceiptDTO dto, Long companyId, Long branchId) {
@@ -52,7 +55,7 @@ public class MaterialReceiptService {
                     .itemCode(item.getItemCode())
                     .quantity(item.getQuantity())
                     .batchNo(item.getBatchNo())
-                    .qc_status("PENDING")
+                    .qcStatus("PENDING")
                     .receipt(receipt)
                     .build();
         }).collect(Collectors.toList());
@@ -166,4 +169,23 @@ public class MaterialReceiptService {
             return new ApiResponse<>(false, "Error verifying batch number: " + e.getMessage(), null);
         }
     }
+
+    public ApiResponse<List<PendingQcItemsDTO>> getPendingQcItems(Long companyId, Long branchId){
+        List<MaterialReceiptItem> items=materialReceiptItemRepository.findByQcStatusAndReceipt_CompanyIdAndReceipt_BranchId("PENDING",companyId,branchId);
+
+        List<PendingQcItemsDTO> result=items.stream().map(item ->{
+            PendingQcItemsDTO dto=new PendingQcItemsDTO();
+            dto.setItemName(item.getItemName());
+            dto.setItemCode(item.getItemCode());
+            dto.setQuantity(item.getQuantity());
+            dto.setBatchNumber(item.getBatchNo());
+            dto.setVendorName(item.getReceipt().getVendor());
+            dto.setVendorCode(item.getReceipt().getVendorCode());
+            dto.setCreatedAt(item.getCreatedAt());
+            return dto;
+        }).collect(Collectors.toList());
+
+        return new ApiResponse<>(true,"Pending Qc items fetched Successfully",result);
+    }
+
 }
