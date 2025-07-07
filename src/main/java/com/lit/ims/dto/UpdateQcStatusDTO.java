@@ -6,4 +6,6 @@ import lombok.Data;
 public class UpdateQcStatusDTO {
     private Long id;
     private String qcStatus;
+    private String defectCategory;
+    private String remarks;
 }

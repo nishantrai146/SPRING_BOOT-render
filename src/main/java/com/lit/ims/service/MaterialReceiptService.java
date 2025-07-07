@@ -7,7 +7,6 @@ import com.lit.ims.dto.UpdateQcStatusDTO;
 import com.lit.ims.entity.MaterialReceipt;
 import com.lit.ims.entity.MaterialReceiptItem;
 import com.lit.ims.entity.VendorItemsMaster;
-import com.lit.ims.exception.ResourceNotFoundException;
 import com.lit.ims.repository.MaterialReceiptItemRepository;
 import com.lit.ims.repository.MaterialReceiptRepository;
 import com.lit.ims.repository.VendorItemsMasterRepository;
@@ -220,18 +219,22 @@ public class MaterialReceiptService {
 
     @Transactional
     public ApiResponse<String> updateQcStatus(UpdateQcStatusDTO dto, Long companyId, Long branchId) {
-        Optional<MaterialReceiptItem> optionalItem = materialReceiptItemRepository
-                .findByIdAndReceipt_CompanyIdAndReceipt_BranchId(dto.getId(), companyId, branchId);
+        MaterialReceiptItem item = materialReceiptItemRepository.findById(dto.getId())
+                .orElseThrow(() -> new RuntimeException("Item not found"));
 
-        if (optionalItem.isEmpty()) {
-            throw new ResourceNotFoundException("Material Receipt Item not found for this company/branch");
+        item.setQcStatus(dto.getQcStatus().toUpperCase());
+
+        if ("FAIL".equalsIgnoreCase(dto.getQcStatus())) {
+            item.setDefectCategory(dto.getDefectCategory());
+            item.setRemarks(dto.getRemarks());
         }
 
-        MaterialReceiptItem item = optionalItem.get();
-        item.setQcStatus(dto.getQcStatus().toUpperCase());
         materialReceiptItemRepository.save(item);
 
-        return new ApiResponse<>(true, "QC status updated successfully", null);
+        logService.log("UPDATE", "MaterialReceiptItem", item.getId(),
+                "QC Status updated to " + dto.getQcStatus());
+
+        return new ApiResponse<>(true, "QC status updated successfully",null);
     }
 
     public ApiResponse<PendingQcItemsDTO> getitemByBatchNo(String batchNo, Long companyId, Long branchId) {

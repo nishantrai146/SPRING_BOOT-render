@@ -21,11 +21,15 @@ public class MaterialReceiptItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     @Column(nullable = false)
     private String itemName;
+
     @Column(nullable = false)
     private String itemCode;
+
     private Integer quantity;
+
     @Column(nullable = false)
     private String batchNo;
 
@@ -33,17 +37,20 @@ public class MaterialReceiptItem {
     @JoinColumn
     private MaterialReceipt receipt;
 
-    @Column(nullable = false,name = "qc_status")
+    @Column(nullable = false, name = "qc_status")
     private String qcStatus;
 
+    @Column(name = "defect_category")
+    private String defectCategory;
+
+    @Column(name = "remarks")
+    private String remarks;
+
     @Column(nullable = false, updatable = false)
-
     private LocalDateTime createdAt;
-
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
-
 }
