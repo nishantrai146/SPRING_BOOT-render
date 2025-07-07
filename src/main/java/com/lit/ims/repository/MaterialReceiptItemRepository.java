@@ -13,5 +13,6 @@ public interface MaterialReceiptItemRepository extends JpaRepository<MaterialRec
     List<MaterialReceiptItem> findByQcStatusInAndReceipt_CompanyIdAndReceipt_BranchId(
             List<String> qcStatuses, Long companyId, Long branchId);
     Optional<MaterialReceiptItem> findByIdAndReceipt_CompanyIdAndReceipt_BranchId(Long id, Long companyId, Long branchId);
+    Optional<MaterialReceiptItem> findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(String batchNo, Long companyId, Long branchId);
 
 }

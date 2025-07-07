@@ -77,4 +77,15 @@ public class MaterialReceiptController {
         return receiptService.updateQcStatus(dto,companyId,branchId);
     }
 
+    @GetMapping("/qc/item-by-batch")
+    public ResponseEntity<ApiResponse<PendingQcItemsDTO>> getItemByBatchNo(
+            @RequestParam String batchNo,
+            @RequestAttribute Long companyId,
+            @RequestAttribute Long branchId
+    ) {
+        ApiResponse<PendingQcItemsDTO> response = receiptService.getitemByBatchNo(batchNo, companyId, branchId);
+        return ResponseEntity.ok(response);
+    }
+
+
 }

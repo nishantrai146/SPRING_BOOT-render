@@ -229,5 +229,21 @@ public class MaterialReceiptService {
         return new ApiResponse<>(true, "QC status updated successfully",null);
     }
 
+    public ApiResponse<PendingQcItemsDTO> getitemByBatchNo(String batchNo,Long companyId,Long branchId){
+        MaterialReceiptItem item=materialReceiptItemRepository.findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(batchNo,companyId,branchId)
+                .orElseThrow(()-> new RuntimeException("Item not found for batch number"+batchNo));
+
+        PendingQcItemsDTO dto=new PendingQcItemsDTO();
+        dto.setId(item.getId());
+        dto.setItemCode(item.getItemCode());
+        dto.setItemName(item.getItemName());
+        dto.setQuantity(item.getQuantity());
+        dto.setBatchNumber(item.getBatchNo());
+        dto.setVendorCode(item.getReceipt().getVendorCode());
+        dto.setVendorName(item.getReceipt().getVendor());
+        dto.setCreatedAt(item.getCreatedAt());
+
+        return new ApiResponse<>(true,"Item Fetched Successfully",dto);
+    }
 
 }
