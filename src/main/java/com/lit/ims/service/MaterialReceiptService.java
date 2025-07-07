@@ -3,9 +3,11 @@ package com.lit.ims.service;
 import com.lit.ims.dto.MaterialReceiptDTO;
 import com.lit.ims.dto.MaterialReceiptItemDTO;
 import com.lit.ims.dto.PendingQcItemsDTO;
+import com.lit.ims.dto.UpdateQcStatusDTO;
 import com.lit.ims.entity.MaterialReceipt;
 import com.lit.ims.entity.MaterialReceiptItem;
 import com.lit.ims.entity.VendorItemsMaster;
+import com.lit.ims.exception.ResourceNotFoundException;
 import com.lit.ims.repository.MaterialReceiptItemRepository;
 import com.lit.ims.repository.MaterialReceiptRepository;
 import com.lit.ims.repository.VendorItemsMasterRepository;
@@ -106,7 +108,7 @@ public class MaterialReceiptService {
             throw new RuntimeException("An error occurred while saving receipt: " + e.getMessage());
         }
     }
-
+    @Transactional
     public ApiResponse<List<MaterialReceiptDTO>> getAll(Long companyId, Long branchId) {
         List<MaterialReceiptDTO> list = receiptRepo.findAll().stream()
                 .filter(r -> r.getCompanyId().equals(companyId) && r.getBranchId().equals(branchId))
@@ -115,7 +117,7 @@ public class MaterialReceiptService {
 
         return new ApiResponse<>(true, "Receipts fetched successfully", list);
     }
-
+    @Transactional
     public String generateBatchNumber(String vendorCode, String itemCode, String quantity, Long companyId, Long branchId) {
         String prefix = "M" + vendorCode + itemCode + quantity +
                 LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy"));
@@ -175,6 +177,7 @@ public class MaterialReceiptService {
 
         List<PendingQcItemsDTO> result=items.stream().map(item ->{
             PendingQcItemsDTO dto=new PendingQcItemsDTO();
+            dto.setId(item.getId());
             dto.setItemName(item.getItemName());
             dto.setItemCode(item.getItemCode());
             dto.setQuantity(item.getQuantity());
@@ -195,6 +198,7 @@ public class MaterialReceiptService {
 
         List<PendingQcItemsDTO> dtoList=items.stream().map(item->{
             PendingQcItemsDTO dto=new PendingQcItemsDTO();
+            dto.setId(item.getId());
             dto.setItemCode(item.getItemCode());
             dto.setItemName(item.getItemName());
             dto.setBatchNumber(item.getBatchNo());
@@ -208,5 +212,22 @@ public class MaterialReceiptService {
         return new ApiResponse<>(true,"Pass/Fail item from OQC",dtoList);
 
     }
+
+    @Transactional
+    public ApiResponse<String> updateQcStatus(UpdateQcStatusDTO dto, Long companyId, Long branchId) {
+        Optional<MaterialReceiptItem> optionalItem = materialReceiptItemRepository
+                .findByIdAndReceipt_CompanyIdAndReceipt_BranchId(dto.getId(), companyId, branchId);
+
+        if (optionalItem.isEmpty()) {
+            throw new ResourceNotFoundException("Material Receipt Item not found for this company/branch");
+        }
+
+        MaterialReceiptItem item = optionalItem.get();
+        item.setQcStatus(dto.getQcStatus().toUpperCase());
+        materialReceiptItemRepository.save(item);
+
+        return new ApiResponse<>(true, "QC status updated successfully",null);
+    }
+
 
 }

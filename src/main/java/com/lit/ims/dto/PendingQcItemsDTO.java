@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 
 @Data
 public class PendingQcItemsDTO {
+    private Long id;
     private String itemName;
     private String itemCode;
     private Integer quantity;

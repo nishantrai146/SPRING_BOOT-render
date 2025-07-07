@@ -3,6 +3,7 @@ package com.lit.ims.controller;
 import com.lit.ims.dto.MaterialReceiptDTO;
 import com.lit.ims.dto.MaterialReceiptItemDTO;
 import com.lit.ims.dto.PendingQcItemsDTO;
+import com.lit.ims.dto.UpdateQcStatusDTO;
 import com.lit.ims.response.ApiResponse;
 import com.lit.ims.service.MaterialReceiptService;
 import lombok.RequiredArgsConstructor;
@@ -65,6 +66,15 @@ public class MaterialReceiptController {
             @RequestAttribute("companyId")Long companyId,
             @RequestAttribute("branchId") Long branchId) {
         return ResponseEntity.ok(receiptService.getItemsWithPassOrFail(companyId, branchId));
+    }
+
+    @PutMapping("/qc-status/update")
+    public ApiResponse<String > updateQcStatus(
+            @RequestBody UpdateQcStatusDTO dto,
+            @RequestAttribute("companyId") Long companyId,
+            @RequestAttribute("branchId") Long branchId
+    ){
+        return receiptService.updateQcStatus(dto,companyId,branchId);
     }
 
 }
