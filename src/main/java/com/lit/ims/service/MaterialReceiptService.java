@@ -33,6 +33,7 @@ public class MaterialReceiptService {
     private final VendorItemsMasterRepository vendorItemsRepo;
     private final TransactionLogService logService;
     private final MaterialReceiptItemRepository materialReceiptItemRepository;
+    private final TransactionLogService transactionLogService;
 
     // DTO → Entity
     private MaterialReceipt toEntity(MaterialReceiptDTO dto, Long companyId, Long branchId) {
@@ -108,6 +109,7 @@ public class MaterialReceiptService {
             throw new RuntimeException("An error occurred while saving receipt: " + e.getMessage());
         }
     }
+
     @Transactional
     public ApiResponse<List<MaterialReceiptDTO>> getAll(Long companyId, Long branchId) {
         List<MaterialReceiptDTO> list = receiptRepo.findAll().stream()
@@ -117,6 +119,7 @@ public class MaterialReceiptService {
 
         return new ApiResponse<>(true, "Receipts fetched successfully", list);
     }
+
     @Transactional
     public String generateBatchNumber(String vendorCode, String itemCode, String quantity, Long companyId, Long branchId) {
         String prefix = "M" + vendorCode + itemCode + quantity +
@@ -127,7 +130,8 @@ public class MaterialReceiptService {
         if (last != null && last.length() >= prefix.length() + 5) {
             try {
                 next = Integer.parseInt(last.substring(prefix.length())) + 1;
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
         return prefix + String.format("%05d", next);
     }
@@ -172,11 +176,11 @@ public class MaterialReceiptService {
         }
     }
 
-    public ApiResponse<List<PendingQcItemsDTO>> getPendingQcItems(Long companyId, Long branchId){
-        List<MaterialReceiptItem> items=materialReceiptItemRepository.findByQcStatusAndReceipt_CompanyIdAndReceipt_BranchId("PENDING",companyId,branchId);
+    public ApiResponse<List<PendingQcItemsDTO>> getPendingQcItems(Long companyId, Long branchId) {
+        List<MaterialReceiptItem> items = materialReceiptItemRepository.findByQcStatusAndReceipt_CompanyIdAndReceipt_BranchId("PENDING", companyId, branchId);
 
-        List<PendingQcItemsDTO> result=items.stream().map(item ->{
-            PendingQcItemsDTO dto=new PendingQcItemsDTO();
+        List<PendingQcItemsDTO> result = items.stream().map(item -> {
+            PendingQcItemsDTO dto = new PendingQcItemsDTO();
             dto.setId(item.getId());
             dto.setItemName(item.getItemName());
             dto.setItemCode(item.getItemCode());
@@ -188,16 +192,16 @@ public class MaterialReceiptService {
             return dto;
         }).collect(Collectors.toList());
 
-        return new ApiResponse<>(true,"Pending Qc items fetched Successfully",result);
+        return new ApiResponse<>(true, "Pending Qc items fetched Successfully", result);
     }
 
-    public ApiResponse<List<PendingQcItemsDTO>> getItemsWithPassOrFail(Long companyId,Long branchId){
-        List<String> statusList=List.of("PASS","FAIL","pass","fail");
+    public ApiResponse<List<PendingQcItemsDTO>> getItemsWithPassOrFail(Long companyId, Long branchId) {
+        List<String> statusList = List.of("PASS", "FAIL", "pass", "fail");
 
-        List<MaterialReceiptItem> items=materialReceiptItemRepository.findByQcStatusInAndReceipt_CompanyIdAndReceipt_BranchId(statusList,companyId,branchId);
+        List<MaterialReceiptItem> items = materialReceiptItemRepository.findByQcStatusInAndReceipt_CompanyIdAndReceipt_BranchId(statusList, companyId, branchId);
 
-        List<PendingQcItemsDTO> dtoList=items.stream().map(item->{
-            PendingQcItemsDTO dto=new PendingQcItemsDTO();
+        List<PendingQcItemsDTO> dtoList = items.stream().map(item -> {
+            PendingQcItemsDTO dto = new PendingQcItemsDTO();
             dto.setId(item.getId());
             dto.setItemCode(item.getItemCode());
             dto.setItemName(item.getItemName());
@@ -209,7 +213,7 @@ public class MaterialReceiptService {
             return dto;
         }).collect(Collectors.toList());
 
-        return new ApiResponse<>(true,"Pass/Fail item from OQC",dtoList);
+        return new ApiResponse<>(true, "Pass/Fail item from OQC", dtoList);
 
     }
 
@@ -226,14 +230,14 @@ public class MaterialReceiptService {
         item.setQcStatus(dto.getQcStatus().toUpperCase());
         materialReceiptItemRepository.save(item);
 
-        return new ApiResponse<>(true, "QC status updated successfully",null);
+        return new ApiResponse<>(true, "QC status updated successfully", null);
     }
 
-    public ApiResponse<PendingQcItemsDTO> getitemByBatchNo(String batchNo,Long companyId,Long branchId){
-        MaterialReceiptItem item=materialReceiptItemRepository.findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(batchNo,companyId,branchId)
-                .orElseThrow(()-> new RuntimeException("Item not found for batch number"+batchNo));
+    public ApiResponse<PendingQcItemsDTO> getitemByBatchNo(String batchNo, Long companyId, Long branchId) {
+        MaterialReceiptItem item = materialReceiptItemRepository.findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(batchNo, companyId, branchId)
+                .orElseThrow(() -> new RuntimeException("Item not found for batch number" + batchNo));
 
-        PendingQcItemsDTO dto=new PendingQcItemsDTO();
+        PendingQcItemsDTO dto = new PendingQcItemsDTO();
         dto.setId(item.getId());
         dto.setItemCode(item.getItemCode());
         dto.setItemName(item.getItemName());
@@ -243,7 +247,33 @@ public class MaterialReceiptService {
         dto.setVendorName(item.getReceipt().getVendor());
         dto.setCreatedAt(item.getCreatedAt());
 
-        return new ApiResponse<>(true,"Item Fetched Successfully",dto);
+        return new ApiResponse<>(true, "Item Fetched Successfully", dto);
+    }
+
+    public ApiResponse<String> deletePendingQc(Long id, Long companyId, Long branchId) {
+        Optional<MaterialReceiptItem> optionalItem = materialReceiptItemRepository.findById(id);
+
+        if (optionalItem.isEmpty()) {
+            return new ApiResponse<>(false, "Transaction not found!", null);
+        }
+
+        MaterialReceiptItem item = optionalItem.get();
+
+        if(!item.getReceipt().getCompanyId().equals(companyId) && !item.getReceipt().getBranchId().equals(branchId)){
+            return new ApiResponse<>(false,"Unauthorized access to this transaction.",null);
+        }
+
+        if(!"PENDING".equalsIgnoreCase(item.getQcStatus())){
+            return new ApiResponse<>(false, "Only transactions with PENDING QC status can be deleted.",null);
+        }
+
+        materialReceiptItemRepository.delete(item);
+
+        logService.log("DELETE", "MaterialReceiptItem", id,
+                "Deleted pending transaction with batchNo: " + item.getBatchNo());
+
+        return new ApiResponse<>(true,"Material receipt Deleted Successfully",null);
+
     }
 
 }

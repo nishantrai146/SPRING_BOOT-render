@@ -86,6 +86,15 @@ public class MaterialReceiptController {
         ApiResponse<PendingQcItemsDTO> response = receiptService.getitemByBatchNo(batchNo, companyId, branchId);
         return ResponseEntity.ok(response);
     }
+    @DeleteMapping("/delete-pending/{id}")
+    public ResponseEntity<ApiResponse<String>> deletePendingTransaction(
+            @PathVariable Long id,
+            @RequestAttribute Long companyId,
+            @RequestAttribute Long branchId
+    ){
+        ApiResponse<String> response=receiptService.deletePendingQc(id,companyId,branchId);
+        return ResponseEntity.ok(response);
+    }
 
 
 }
