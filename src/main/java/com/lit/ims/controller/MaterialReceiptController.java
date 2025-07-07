@@ -1,6 +1,7 @@
 package com.lit.ims.controller;
 
 import com.lit.ims.dto.MaterialReceiptDTO;
+import com.lit.ims.dto.MaterialReceiptItemDTO;
 import com.lit.ims.response.ApiResponse;
 import com.lit.ims.service.MaterialReceiptService;
 import lombok.RequiredArgsConstructor;
@@ -40,5 +41,12 @@ public class MaterialReceiptController {
                                                 @RequestAttribute("companyId") Long companyId,
                                                 @RequestAttribute("branchId") Long branchId) {
         return ResponseEntity.ok(receiptService.generateBatchNumber(vendorCode, itemCode, quantity,companyId, branchId));
+    }
+    @GetMapping("/verify-batch")
+    public ResponseEntity<ApiResponse<MaterialReceiptItemDTO>> verifyBatchNo(
+            @RequestParam String batchNo,
+            @RequestAttribute("companyId") Long companyId,
+            @RequestAttribute("branchId") Long branchId) {
+        return ResponseEntity.ok(receiptService.verifyBatchNumber(batchNo, companyId, branchId));
     }
 }

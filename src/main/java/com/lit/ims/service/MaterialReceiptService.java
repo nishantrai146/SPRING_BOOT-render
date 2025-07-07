@@ -4,9 +4,12 @@ import com.lit.ims.dto.MaterialReceiptDTO;
 import com.lit.ims.dto.MaterialReceiptItemDTO;
 import com.lit.ims.entity.MaterialReceipt;
 import com.lit.ims.entity.MaterialReceiptItem;
+import com.lit.ims.entity.VendorItemsMaster;
 import com.lit.ims.repository.MaterialReceiptRepository;
+import com.lit.ims.repository.VendorItemsMasterRepository;
 import com.lit.ims.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,17 +17,21 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MaterialReceiptService {
 
     private final MaterialReceiptRepository receiptRepo;
+    private final VendorItemsMasterRepository vendorItemsRepo;
     private final TransactionLogService logService;
 
     // DTO → Entity
     private MaterialReceipt toEntity(MaterialReceiptDTO dto, Long companyId, Long branchId) {
+        log.info("Converting DTO to Entity. DTO: {}", dto);
         MaterialReceipt receipt = MaterialReceipt.builder()
                 .mode(dto.getMode())
                 .vendor(dto.getVendor())
@@ -33,15 +40,22 @@ public class MaterialReceiptService {
                 .branchId(branchId)
                 .build();
 
-        List<MaterialReceiptItem> items = dto.getItems().stream().map(item ->
-                MaterialReceiptItem.builder()
-                        .itemName(item.getItemName())
-                        .itemCode(item.getItemCode())
-                        .quantity(item.getQuantity())
-                        .batchNo(item.getBatchNo())
-                        .receipt(receipt)
-                        .build()
-        ).collect(Collectors.toList());
+        List<MaterialReceiptItem> items = dto.getItems().stream().map(item -> {
+            if (item.getBatchNo() == null || item.getBatchNo().isBlank()) {
+                throw new RuntimeException("Batch number is missing for item: " + item.getItemName());
+            }
+
+            log.info("Mapping Item DTO to Entity: {}", item);
+
+            return MaterialReceiptItem.builder()
+                    .itemName(item.getItemName())
+                    .itemCode(item.getItemCode())
+                    .quantity(item.getQuantity())
+                    .batchNo(item.getBatchNo())
+                    .qc_status("PENDING")
+                    .receipt(receipt)
+                    .build();
+        }).collect(Collectors.toList());
 
         receipt.setItems(items);
         return receipt;
@@ -67,15 +81,28 @@ public class MaterialReceiptService {
     @Transactional
     public ApiResponse<MaterialReceiptDTO> saveReceipt(MaterialReceiptDTO dto, Long companyId, Long branchId) {
         try {
+            log.info("Saving Material Receipt with vendor: {}, companyId: {}, branchId: {}", dto.getVendor(), companyId, branchId);
+
+            // Log incoming items
+            if (dto.getItems() != null) {
+                dto.getItems().forEach(item -> log.info("Received Item: {}", item));
+            } else {
+                log.warn("No items found in the DTO");
+            }
+
             MaterialReceipt saved = receiptRepo.save(toEntity(dto, companyId, branchId));
+
             logService.log("CREATE", "MaterialReceipt", saved.getId(), "Created receipt for vendor " + saved.getVendor());
+
             return new ApiResponse<>(true, "Material Receipt saved successfully", toDTO(saved));
         } catch (DataIntegrityViolationException e) {
+            log.error("Error saving receipt - duplicate batch number: {}", e.getMessage());
             throw new RuntimeException("Batch number already exists. Please regenerate and try again.");
+        } catch (Exception e) {
+            log.error("Unexpected error while saving material receipt", e);
+            throw new RuntimeException("An error occurred while saving receipt: " + e.getMessage());
         }
-
     }
-
 
     public ApiResponse<List<MaterialReceiptDTO>> getAll(Long companyId, Long branchId) {
         List<MaterialReceiptDTO> list = receiptRepo.findAll().stream()
@@ -86,8 +113,8 @@ public class MaterialReceiptService {
         return new ApiResponse<>(true, "Receipts fetched successfully", list);
     }
 
-    public String generateBatchNumber(String vendorCode, String itemCode,String quantity, Long companyId, Long branchId) {
-        String prefix = "M" + vendorCode + itemCode + quantity+
+    public String generateBatchNumber(String vendorCode, String itemCode, String quantity, Long companyId, Long branchId) {
+        String prefix = "M" + vendorCode + itemCode + quantity +
                 LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy"));
 
         String last = receiptRepo.findMaxBatchNoWithPrefix(prefix);
@@ -98,5 +125,45 @@ public class MaterialReceiptService {
             } catch (NumberFormatException ignored) {}
         }
         return prefix + String.format("%05d", next);
+    }
+
+    public ApiResponse<MaterialReceiptItemDTO> verifyBatchNumber(String batchNo, Long companyId, Long branchId) {
+        try {
+            if (batchNo.length() < 28) {
+                return new ApiResponse<>(false, "Invalid batch number format", null);
+            }
+
+            String vendorCode = batchNo.substring(1, 7);       // 6 chars
+            String itemCode = batchNo.substring(7, 13);        // 6 chars
+
+            List<VendorItemsMaster> vendorItems = vendorItemsRepo
+                    .findByVendorCodeAndCompanyIdAndBranchId(vendorCode, companyId, branchId);
+
+            if (vendorItems.isEmpty()) {
+                return new ApiResponse<>(false, "Invalid Vendor Code: " + vendorCode, null);
+            }
+
+            Optional<VendorItemsMaster> match = vendorItems.stream()
+                    .filter(item -> item.getItemCode().equals(itemCode))
+                    .findFirst();
+
+            if (match.isEmpty()) {
+                return new ApiResponse<>(false, "Item Code " + itemCode + " not found under Vendor " + vendorCode, null);
+            }
+
+            VendorItemsMaster master = match.get();
+
+            MaterialReceiptItemDTO dto = new MaterialReceiptItemDTO();
+            dto.setItemCode(master.getItemCode());
+            dto.setItemName(master.getItemName());
+            dto.setQuantity(master.getQuantity());
+            dto.setBatchNo(batchNo);
+
+            return new ApiResponse<>(true, "Batch number verified", dto);
+
+        } catch (Exception e) {
+            log.error("Error verifying batch number", e);
+            return new ApiResponse<>(false, "Error verifying batch number: " + e.getMessage(), null);
+        }
     }
 }

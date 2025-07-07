@@ -31,4 +31,7 @@ public class MaterialReceiptItem {
     @JoinColumn
     private MaterialReceipt receipt;
 
+    @Column(nullable = false)
+    private String qc_status;
+
 }
