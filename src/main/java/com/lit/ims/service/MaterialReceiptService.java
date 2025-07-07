@@ -185,6 +185,7 @@ public class MaterialReceiptService {
             dto.setItemCode(item.getItemCode());
             dto.setQuantity(item.getQuantity());
             dto.setBatchNumber(item.getBatchNo());
+            dto.setStatus(item.getQcStatus());
             dto.setVendorName(item.getReceipt().getVendor());
             dto.setVendorCode(item.getReceipt().getVendorCode());
             dto.setCreatedAt(item.getCreatedAt());
