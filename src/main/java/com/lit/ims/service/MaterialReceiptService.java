@@ -188,4 +188,25 @@ public class MaterialReceiptService {
         return new ApiResponse<>(true,"Pending Qc items fetched Successfully",result);
     }
 
+    public ApiResponse<List<PendingQcItemsDTO>> getItemsWithPassOrFail(Long companyId,Long branchId){
+        List<String> statusList=List.of("PASS","FAIL","pass","fail");
+
+        List<MaterialReceiptItem> items=materialReceiptItemRepository.findByQcStatusInAndReceipt_CompanyIdAndReceipt_BranchId(statusList,companyId,branchId);
+
+        List<PendingQcItemsDTO> dtoList=items.stream().map(item->{
+            PendingQcItemsDTO dto=new PendingQcItemsDTO();
+            dto.setItemCode(item.getItemCode());
+            dto.setItemName(item.getItemName());
+            dto.setBatchNumber(item.getBatchNo());
+            dto.setVendorName(item.getReceipt().getVendor());
+            dto.setVendorCode(item.getReceipt().getVendorCode());
+            dto.setCreatedAt(item.getCreatedAt());
+            dto.setQuantity(item.getQuantity());
+            return dto;
+        }).collect(Collectors.toList());
+
+        return new ApiResponse<>(true,"Pass/Fail item from OQC",dtoList);
+
+    }
+
 }

@@ -59,4 +59,12 @@ public class MaterialReceiptController {
     ) {
         return receiptService.getPendingQcItems(companyId,branchId);
     }
+
+    @GetMapping("/qc-status/result")
+    public ResponseEntity<ApiResponse<List<PendingQcItemsDTO>>> getPassFailItems(
+            @RequestAttribute("companyId")Long companyId,
+            @RequestAttribute("branchId") Long branchId) {
+        return ResponseEntity.ok(receiptService.getItemsWithPassOrFail(companyId, branchId));
+    }
+
 }
