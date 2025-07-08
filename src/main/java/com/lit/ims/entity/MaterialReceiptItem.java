@@ -33,8 +33,8 @@ public class MaterialReceiptItem {
     @Column(nullable = false)
     private String batchNo;
 
-    @ManyToOne
-    @JoinColumn
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "receipt_id")
     private MaterialReceipt receipt;
 
     @Column(nullable = false, name = "qc_status")
