@@ -1,5 +1,6 @@
 package com.lit.ims.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 import lombok.Data;
 
@@ -12,5 +13,6 @@ public class RequisitionSummaryDTO {
     private String transactionNumber;
     private String type;
     private String status;
+    @JsonFormat(pattern = "dd-MM-yyyy hh:mm:ss a")
     private LocalDateTime createdAt;
 }
