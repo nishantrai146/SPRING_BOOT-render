@@ -1,6 +1,8 @@
 package com.lit.ims.controller;
 
+import com.lit.ims.dto.ItemMasterDTO;
 import com.lit.ims.dto.MaterialRequisitionDTO;
+import com.lit.ims.dto.RequestedItemDTO;
 import com.lit.ims.dto.RequisitionSummaryDTO;
 import com.lit.ims.entity.MaterialRequisitions;
 import com.lit.ims.response.ApiResponse;
@@ -47,5 +49,23 @@ public class MaterialRequisitionController {
         service.updateStatus(id, status, companyId, branchId);
         return ResponseEntity.ok(new ApiResponse<>(true,"Status updated successfully", status.toUpperCase()));
     }
+    @GetMapping("/trNo")
+    public ResponseEntity<ApiResponse <List<String>>>getAllTransactionNumber(@RequestAttribute Long companyId,
+                                                                       @RequestAttribute Long branchId){
+        List<String> transactions=service.getAllTransactionNumber(companyId,branchId);
+        return ResponseEntity.ok(new ApiResponse<>(true,"Fetch Successfully",transactions));
+    }
+
+    @GetMapping("/{transactionNumber}/items/full")
+    public ResponseEntity<ApiResponse<List<ItemMasterDTO>>> getFullItemDetailsByTransactionNumber(
+            @PathVariable String transactionNumber,
+            @RequestAttribute Long companyId,
+            @RequestAttribute Long branchId
+    ) {
+        List<ItemMasterDTO> items = service.getFullItemsByTransactionNumber(transactionNumber, companyId, branchId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched full item details", items));
+    }
+
+
 
 }

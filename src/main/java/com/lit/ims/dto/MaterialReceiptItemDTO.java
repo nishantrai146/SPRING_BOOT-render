@@ -8,4 +8,5 @@ public class MaterialReceiptItemDTO {
     private String itemCode;
     private Integer quantity;
     private String batchNo;
+    private boolean isIssued;
 }

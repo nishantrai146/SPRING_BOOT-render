@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,4 +29,12 @@ public class MaterialReceipt {
 
     @OneToMany(mappedBy = "receipt",cascade = CascadeType.ALL,orphanRemoval = true)
     private List<MaterialReceiptItem> items=new ArrayList<>();
+
+    @Column(nullable = false, updatable = false,name = "entry_date")
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

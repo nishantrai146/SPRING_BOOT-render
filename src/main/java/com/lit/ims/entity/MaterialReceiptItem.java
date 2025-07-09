@@ -53,4 +53,6 @@ public class MaterialReceiptItem {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
+    @Column(name = "is_issued", nullable = false)
+    private boolean isIssued = false;
 }

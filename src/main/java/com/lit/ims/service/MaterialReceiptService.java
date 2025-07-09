@@ -4,9 +4,11 @@ import com.lit.ims.dto.MaterialReceiptDTO;
 import com.lit.ims.dto.MaterialReceiptItemDTO;
 import com.lit.ims.dto.PendingQcItemsDTO;
 import com.lit.ims.dto.UpdateQcStatusDTO;
+import com.lit.ims.entity.Item;
 import com.lit.ims.entity.MaterialReceipt;
 import com.lit.ims.entity.MaterialReceiptItem;
 import com.lit.ims.entity.VendorItemsMaster;
+import com.lit.ims.repository.ItemRepository;
 import com.lit.ims.repository.MaterialReceiptItemRepository;
 import com.lit.ims.repository.MaterialReceiptRepository;
 import com.lit.ims.repository.VendorItemsMasterRepository;
@@ -33,6 +35,8 @@ public class MaterialReceiptService {
     private final TransactionLogService logService;
     private final MaterialReceiptItemRepository materialReceiptItemRepository;
     private final TransactionLogService transactionLogService;
+    private final ItemRepository itemRepository;
+
 
     // DTO → Entity
     private MaterialReceipt toEntity(MaterialReceiptDTO dto, Long companyId, Long branchId) {
@@ -281,5 +285,97 @@ public class MaterialReceiptService {
         return new ApiResponse<>(true,"Material receipt Deleted Successfully",null);
 
     }
+    @Transactional
+    public ApiResponse<MaterialReceiptItemDTO> verifyBatchAndIssueIfFifo(String batchNo, Long companyId, Long branchId) {
+        try {
+            if (batchNo == null || batchNo.length() < 28) {
+                return new ApiResponse<>(false, "Invalid batch number format", null);
+            }
+
+            String vendorCode = batchNo.substring(1, 7);
+            String itemCode = batchNo.substring(7, 13);
+
+            // Fetch the actual batch item
+            Optional<MaterialReceiptItem> optionalItem =
+                    materialReceiptItemRepository.findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(batchNo, companyId, branchId);
+
+            if (optionalItem.isEmpty()) {
+                return new ApiResponse<>(false, "Batch not found: " + batchNo, null);
+            }
+
+            MaterialReceiptItem actualItem = optionalItem.get();
+
+            // Check if already issued
+            if (actualItem.isIssued()) {
+                return new ApiResponse<>(false, "Batch already issued: " + batchNo, null);
+            }
+
+            // Check QC status
+            if (!"PASS".equalsIgnoreCase(actualItem.getQcStatus())) {
+                return new ApiResponse<>(false, "QC status must be PASS. Found: " + actualItem.getQcStatus(), null);
+            }
+
+            // Check life from item master
+            Optional<Item> itemOpt = itemRepository.findByCodeAndCompanyIdAndBranchId(itemCode, companyId, branchId);
+            if (itemOpt.isEmpty()) {
+                return new ApiResponse<>(false, "Item not found in Item Master: " + itemCode, null);
+            }
+
+            Item itemMaster = itemOpt.get();
+            Integer lifeInDays = itemMaster.getLife() != null ? itemMaster.getLife() : 0;
+
+            // Check shelf life of this batch
+            if (actualItem.getCreatedAt() != null) {
+                LocalDate expiryDate = actualItem.getCreatedAt().toLocalDate().plusDays(lifeInDays);
+                if (LocalDate.now().isAfter(expiryDate)) {
+                    return new ApiResponse<>(false, "Shelf life exceeded for batch: " + batchNo, null);
+                }
+            }
+
+            // FIFO validation - ignore expired, issued, and QC-fail batches
+            List<MaterialReceiptItem> fifoCandidates =
+                    materialReceiptItemRepository.findAllByItemCodeAndReceipt_VendorCodeAndIsIssuedFalseAndQcStatusIgnoreCaseAndReceipt_CompanyIdAndReceipt_BranchIdOrderByCreatedAtAsc(
+                            itemCode, vendorCode, "PASS", companyId, branchId);
+
+            Optional<MaterialReceiptItem> fifoBatch = fifoCandidates.stream()
+                    .filter(item -> {
+                        if (item.getCreatedAt() == null) return false;
+                        LocalDate expiryDate = item.getCreatedAt().toLocalDate().plusDays(lifeInDays);
+                        return !LocalDate.now().isAfter(expiryDate);
+                    })
+                    .findFirst();
+
+            if (fifoBatch.isEmpty()) {
+                return new ApiResponse<>(false, "No unexpired FIFO batch found for this item", null);
+            }
+
+            if (!fifoBatch.get().getBatchNo().equals(batchNo)) {
+                return new ApiResponse<>(false,
+                        "FIFO violation. Earliest available batch is: " + fifoBatch.get().getBatchNo(),
+                        null);
+            }
+
+            // ✅ Mark batch as issued
+            actualItem.setIssued(true);
+            materialReceiptItemRepository.save(actualItem);
+
+            MaterialReceiptItemDTO dto = new MaterialReceiptItemDTO();
+            dto.setItemCode(actualItem.getItemCode());
+            dto.setItemName(actualItem.getItemName());
+            dto.setQuantity(actualItem.getQuantity());
+            dto.setBatchNo(actualItem.getBatchNo());
+            dto.setIssued(true);
+
+            logService.log("UPDATE", "MaterialReceiptItem", actualItem.getId(),
+                    "Batch issued via FIFO + QC PASS + Shelf life validated");
+
+            return new ApiResponse<>(true, "Batch verified and issued successfully", dto);
+
+        } catch (Exception e) {
+            log.error("Error verifying batch for FIFO issue", e);
+            return new ApiResponse<>(false, "Internal error: " + e.getMessage(), null);
+        }
+    }
+
 
 }
