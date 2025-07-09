@@ -96,5 +96,16 @@ public class MaterialReceiptController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/issue-fifo")
+    public ResponseEntity<ApiResponse<MaterialReceiptItemDTO>> verifyAndIssueBatchFifo(
+            @RequestParam String batchNo,
+            @RequestAttribute Long companyId,
+            @RequestAttribute Long branchId
+    ) {
+        return ResponseEntity.ok(
+                receiptService.verifyBatchAndIssueIfFifo(batchNo, companyId, branchId)
+        );
+    }
+
 
 }
