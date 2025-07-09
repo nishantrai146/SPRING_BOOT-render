@@ -53,6 +53,17 @@ public class MaterialRequisitionService {
                         .type(r.getType())
                         .status(r.getStatus().name())
                         .createdAt(r.getCreatedAt())
+                        .items(
+                                r.getItems().stream()
+                                        .map(item -> {
+                                            RequestedItemDTO dto = new RequestedItemDTO();
+                                            dto.setName(item.getName());
+                                            dto.setCode(item.getCode());
+                                            dto.setType(item.getType());
+                                            dto.setQuantity(item.getQuantity());
+                                            return dto;
+                                        }).toList()
+                        )
                         .build())
                 .toList();
     }
