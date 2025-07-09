@@ -107,5 +107,14 @@ public class MaterialReceiptController {
         );
     }
 
+    @DeleteMapping("/release")
+    public ResponseEntity<ApiResponse<String>> releaseIssuedBatch(
+            @RequestParam String batchNo,
+            @RequestAttribute Long companyId,
+            @RequestAttribute Long branchId) {
+        return ResponseEntity.ok(receiptService.releaseIssuedBatch(batchNo, companyId, branchId));
+    }
+
+
 
 }

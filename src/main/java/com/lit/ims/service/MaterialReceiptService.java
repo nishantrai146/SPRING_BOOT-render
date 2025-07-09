@@ -377,5 +377,30 @@ public class MaterialReceiptService {
         }
     }
 
+    @Transactional
+    public ApiResponse<String> releaseIssuedBatch(String batchNo, Long companyId, Long branchId) {
+        try {
+            MaterialReceiptItem item = materialReceiptItemRepository
+                    .findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(batchNo, companyId, branchId)
+                    .orElseThrow(() -> new RuntimeException("Batch not found: " + batchNo));
+
+            if (!item.isIssued()) {
+                return new ApiResponse<>(false, "Batch is not issued. Nothing to release.", null);
+            }
+
+            // Revert the issue
+            item.setIssued(false);
+            materialReceiptItemRepository.save(item);
+
+            logService.log("UPDATE", "MaterialReceiptItem", item.getId(), "Batch release (reverted isIssued = false)");
+
+            return new ApiResponse<>(true, "Batch released successfully", null);
+        } catch (Exception e) {
+            log.error("Error releasing issued batch", e);
+            return new ApiResponse<>(false, "Error: " + e.getMessage(), null);
+        }
+    }
+
+
 
 }
