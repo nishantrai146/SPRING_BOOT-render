@@ -6,10 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
 @SpringBootApplication
 @EnableMethodSecurity
+@EnableScheduling
 
 //public class ImsApplication implements CommandLineRunner {
 public class ImsApplication {

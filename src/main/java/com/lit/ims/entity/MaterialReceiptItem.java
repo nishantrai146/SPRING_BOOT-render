@@ -55,4 +55,11 @@ public class MaterialReceiptItem {
     }
     @Column(name = "is_issued", nullable = false)
     private boolean isIssued = false;
+
+    @Column(name = "reserved_by")
+    private String reservedBy;
+
+    @Column(name = "reserved_at")
+    private LocalDateTime reservedAt;
+
 }

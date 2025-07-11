@@ -4,6 +4,7 @@ import com.lit.ims.entity.MaterialReceiptItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,6 +22,9 @@ public interface MaterialReceiptItemRepository extends JpaRepository<MaterialRec
             Long companyId,
             Long branchId
     );
+
+    List<MaterialReceiptItem> findAllByReservedAtBeforeAndIsIssuedFalse(LocalDateTime cutoff);
+
 
 
 

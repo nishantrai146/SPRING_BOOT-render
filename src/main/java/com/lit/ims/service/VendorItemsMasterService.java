@@ -1,7 +1,9 @@
 package com.lit.ims.service;
 
 import com.lit.ims.dto.VendorItemsMasterDTO;
+import com.lit.ims.entity.Item;
 import com.lit.ims.entity.VendorItemsMaster;
+import com.lit.ims.repository.ItemRepository;
 import com.lit.ims.repository.VendorItemsMasterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -17,8 +19,16 @@ public class VendorItemsMasterService {
 
     private final VendorItemsMasterRepository repository;
     private final TransactionLogService logService;
+    private final ItemRepository itemRepository;
 
     private VendorItemsMasterDTO convertToDTO(VendorItemsMaster entity) {
+        Integer itemQuantity = itemRepository
+                .findByCodeAndCompanyIdAndBranchId(entity.getItemCode(),
+                        entity.getCompanyId(),
+                        entity.getBranchId())
+                .map(Item::getStQty)
+                .orElse(0);
+
         return VendorItemsMasterDTO.builder()
                 .id(entity.getId())
                 .vendorCode(entity.getVendorCode())
@@ -26,7 +36,7 @@ public class VendorItemsMasterService {
                 .itemCode(entity.getItemCode())
                 .itemName(entity.getItemName())
                 .days(entity.getDays())
-                .quantity(entity.getQuantity())
+                .quantity(itemQuantity)
                 .price(entity.getPrice())
                 .status(entity.getStatus())
                 .build();
