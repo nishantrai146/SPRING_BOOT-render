@@ -1,8 +1,8 @@
 package com.lit.ims;
 
 //import com.lit.ims.service.UserService;
-
-import org.springframework.beans.factory.annotation.Autowired;
+//
+//import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -16,7 +16,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 //public class ImsApplication implements CommandLineRunner {
 public class ImsApplication {
 
-    @Autowired
+//    @Autowired
 //    private UserService userService;
 
     public static void main(String[] args) {

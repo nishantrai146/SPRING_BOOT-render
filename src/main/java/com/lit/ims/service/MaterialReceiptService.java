@@ -136,7 +136,7 @@ public class MaterialReceiptService {
         String prefix = "M" + vendorCode + itemCode + quantity +
                 LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy"));
 
-        String last = receiptRepo.findMaxBatchNoWithPrefix(prefix);
+        String last = receiptRepo.findMaxBatchNoWithPrefix(prefix,companyId,branchId);
         int next = 1;
         if (last != null && last.length() >= prefix.length() + 5) {
             try {
@@ -384,78 +384,77 @@ public class MaterialReceiptService {
 //            log.error("Error verifying batch for FIFO issue", e);
 //            return new ApiResponse<>(false, "Internal error: " + e.getMessage(), null);
 //        }
-//    }
+//    }verifyBatchAndReserveIfFifo
     @Transactional
-    public ApiResponse<MaterialReceiptItemDTO> verifyBatchAndReserveIfFifo(String batchNo, Long companyId, Long branchId, String username) {
+    public ApiResponse<MaterialReceiptItemDTO> verifyBatchAndReserveIfFifo(
+            String batchNo, Long companyId, Long branchId, String username) {
+
         try {
+            /* ─── 0. Format check ─────────────────────────────── */
             if (batchNo == null || batchNo.length() < 28) {
                 return new ApiResponse<>(false, "Invalid batch number format", null);
             }
 
             String vendorCode = batchNo.substring(1, 7);
-            String itemCode = batchNo.substring(7, 13);
+            String itemCode   = batchNo.substring(7, 13);
 
-            Optional<MaterialReceiptItem> optionalItem =
-                    materialReceiptItemRepository.findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(batchNo, companyId, branchId);
-
-            if (optionalItem.isEmpty()) {
-                return new ApiResponse<>(false, "Batch not found: " + batchNo, null);
-            }
-
-            MaterialReceiptItem actualItem = optionalItem.get();
+            /* ─── 1. Load batch row ───────────────────────────── */
+            MaterialReceiptItem actualItem = materialReceiptItemRepository
+                    .findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(
+                            batchNo, companyId, branchId)
+                    .orElseThrow(() -> new RuntimeException("Batch not found: " + batchNo));
 
             if (actualItem.isIssued()) {
                 return new ApiResponse<>(false, "Batch already issued: " + batchNo, null);
             }
 
-            if (actualItem.getReservedBy() != null) {
+            // 🔑 Allow if already reserved *by this user*; block if by someone else
+            if (actualItem.getReservedBy() != null && !actualItem.getReservedBy().equals(username)) {
                 return new ApiResponse<>(false, "Batch is already reserved by another user", null);
             }
 
             if (!"PASS".equalsIgnoreCase(actualItem.getQcStatus())) {
-                return new ApiResponse<>(false, "QC status must be PASS. Found: " + actualItem.getQcStatus(), null);
+                return new ApiResponse<>(false, "QC status must be PASS. Found: "
+                        + actualItem.getQcStatus(), null);
             }
 
-            Optional<Item> itemOpt = itemRepository.findByCodeAndCompanyIdAndBranchId(itemCode, companyId, branchId);
-            if (itemOpt.isEmpty()) {
-                return new ApiResponse<>(false, "Item not found in Item Master: " + itemCode, null);
+            /* ─── 2. Shelf‑life check ─────────────────────────── */
+            Item itemMaster = itemRepository
+                    .findByCodeAndCompanyIdAndBranchId(itemCode, companyId, branchId)
+                    .orElseThrow(() -> new RuntimeException("Item not found in Item Master: " + itemCode));
+
+            int lifeInDays = itemMaster.getLife() == null ? 0 : itemMaster.getLife();
+            if (actualItem.getCreatedAt() != null &&
+                    LocalDate.now().isAfter(actualItem.getCreatedAt().toLocalDate().plusDays(lifeInDays))) {
+                return new ApiResponse<>(false, "Shelf life exceeded for batch: " + batchNo, null);
             }
 
-            Item itemMaster = itemOpt.get();
-            Integer lifeInDays = itemMaster.getLife() != null ? itemMaster.getLife() : 0;
-
-            if (actualItem.getCreatedAt() != null) {
-                LocalDate expiryDate = actualItem.getCreatedAt().toLocalDate().plusDays(lifeInDays);
-                if (LocalDate.now().isAfter(expiryDate)) {
-                    return new ApiResponse<>(false, "Shelf life exceeded for batch: " + batchNo, null);
-                }
-            }
-
+            /* ─── 3. FIFO validation ─────────────────────────── */
             List<MaterialReceiptItem> fifoCandidates =
-                    materialReceiptItemRepository.findAllByItemCodeAndReceipt_VendorCodeAndIsIssuedFalseAndQcStatusIgnoreCaseAndReceipt_CompanyIdAndReceipt_BranchIdOrderByCreatedAtAsc(
-                            itemCode, vendorCode, "PASS", companyId, branchId);
+                    materialReceiptItemRepository
+                            .findAllByItemCodeAndReceipt_VendorCodeAndIsIssuedFalseAndQcStatusIgnoreCaseAndReceipt_CompanyIdAndReceipt_BranchIdOrderByCreatedAtAsc(
+                                    itemCode, vendorCode, "PASS", companyId, branchId);
 
-            Optional<MaterialReceiptItem> fifoBatch = fifoCandidates.stream()
-                    .filter(item -> {
-                        if (item.getCreatedAt() == null) return false;
-                        LocalDate expiryDate = item.getCreatedAt().toLocalDate().plusDays(lifeInDays);
-                        return !LocalDate.now().isAfter(expiryDate);
+            // Earliest completely UN‑reserved, UN‑expired batch
+            Optional<MaterialReceiptItem> earliestUnreserved = fifoCandidates.stream()
+                    .filter(it -> it.getReservedBy() == null) // skip anything already reserved
+                    .filter(it -> {
+                        if (it.getCreatedAt() == null) return false;
+                        LocalDate exp = it.getCreatedAt().toLocalDate().plusDays(lifeInDays);
+                        return !LocalDate.now().isAfter(exp);
                     })
                     .findFirst();
 
-            if (fifoBatch.isEmpty()) {
-                return new ApiResponse<>(false, "No unexpired FIFO batch found for this item", null);
-            }
-
-            if (!fifoBatch.get().getBatchNo().equals(batchNo)) {
+            if (earliestUnreserved.isPresent()
+                    && !earliestUnreserved.get().getBatchNo().equals(batchNo)) {
                 return new ApiResponse<>(false,
-                        "FIFO violation. Earliest available batch is: " + fifoBatch.get().getBatchNo(),
-                        null);
+                        "FIFO violation. Earliest un‑reserved batch is: "
+                                + earliestUnreserved.get().getBatchNo(), null);
             }
 
-            // ✅ Reserve batch
-            actualItem.setReservedBy(username);
-            actualItem.setReservedAt(java.time.LocalDateTime.now());
+            /* ─── 4. Reserve for current user ────────────────── */
+            actualItem.setReservedBy(username);                 // idempotent if already same user
+            actualItem.setReservedAt(LocalDateTime.now());
             materialReceiptItemRepository.save(actualItem);
 
             MaterialReceiptItemDTO dto = new MaterialReceiptItemDTO();
@@ -495,10 +494,10 @@ public class MaterialReceiptService {
     }
 
 
-    @Scheduled(fixedRate = 60_000) // Every 5 minutes
+    @Scheduled(fixedRate = 300000) // Every 5 minutes
     @Transactional
     public void releaseStaleReservations() {
-        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(2);
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(10);
         List<MaterialReceiptItem> stale = materialReceiptItemRepository.findAllByReservedAtBeforeAndIsIssuedFalse(cutoff);
 
         for (MaterialReceiptItem item : stale) {
