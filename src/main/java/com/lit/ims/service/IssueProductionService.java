@@ -68,22 +68,22 @@ public class IssueProductionService {
 
     public List<String> getAllIssueNumbers(Long companyId, Long branchId) {
         return issueProductionRepository
-                .findByCompanyIdAndBranchId(companyId, branchId)
+                .findAllByStatusAndCompanyIdAndBranchId(IssueStatus.PENDING,companyId,branchId)
                 .stream()
                 .map(IssueProduction::getIssueNumber)
                 .distinct()
                 .toList();
     }
 
-    public IssuedItemSummaryResponseDTO getGroupedIssuedItemsWithMeta(String issueNumber, Long companyId, Long branchId) {
-        Optional<IssueProduction> optionalIssue = issueProductionRepository
-                .findByIssueNumberAndCompanyIdAndBranchId(issueNumber, companyId, branchId);
+    public IssuedItemSummaryResponseDTO getIssuedBatchesWithMeta(
+            String issueNumber, Long companyId, Long branchId) {
 
-        if (optionalIssue.isEmpty()) {
-            return null;
-        }
+        IssueProduction issue = issueProductionRepository
+                .findByIssueNumberAndCompanyIdAndBranchId(issueNumber, companyId, branchId)
+                .orElse(null);
 
-        IssueProduction issue = optionalIssue.get();
+        if (issue == null) return null;
+
         String reqNumber = issue.getRequisitionNumber();
         LocalDateTime issueDate = issue.getIssueDate();
         LocalDateTime requisitionCreatedAt = materialRequisitionRepository
@@ -91,31 +91,17 @@ public class IssueProductionService {
                 .map(MaterialRequisitions::getCreatedAt)
                 .orElse(null);
 
-        List<IssuedItemSummaryDTO> groupedList = new ArrayList<>();
-        Map<String, IssuedItemSummaryDTO> groupedMap = new HashMap<>();
-
-        for (IssuedBatchItems batch : issue.getBatchItems()) {
-            String key = batch.getItemCode();
-
-            groupedMap.compute(key, (k, existing) -> {
-                if (existing == null) {
-                    return new IssuedItemSummaryDTO(
-                            batch.getItemCode(),
-                            batch.getItemName(),
-                            batch.getQuantity(),
-                            batch.getVariance(),
-                            new ArrayList<>(List.of(batch.getBatchNo()))
-                    );
-                } else {
-                    existing.setTotalIssued(existing.getTotalIssued() + batch.getQuantity());
-                    existing.setTotalVariance(existing.getTotalVariance() + batch.getVariance());
-                    existing.getBatchNumbers().add(batch.getBatchNo());
-                    return existing;
-                }
-            });
-        }
-
-        groupedList.addAll(groupedMap.values());
+        /* 🔄 Build a flat list: one DTO per batch row */
+        List<IssuedItemSummaryDTO> items = issue.getBatchItems().stream()
+                .map(b -> IssuedItemSummaryDTO.builder()
+                        .id(b.getId())
+                        .itemCode(b.getItemCode())
+                        .itemName(b.getItemName())
+                        .totalIssued(b.getQuantity())
+                        .totalVariance(b.getVariance())
+                        .batchNumber(b.getBatchNo())
+                        .build())
+                .toList();
 
         return IssuedItemSummaryResponseDTO.builder()
                 .issueNumber(issueNumber)
@@ -123,7 +109,7 @@ public class IssueProductionService {
                 .requisitionCreatedAt(requisitionCreatedAt)
                 .issueDate(issueDate)
                 .type(issue.getType())
-                .items(groupedList)
+                .items(items)                   // 🆕 flat list
                 .build();
     }
 

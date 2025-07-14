@@ -36,7 +36,7 @@ public class IssueProductionController {
             @RequestAttribute Long branchId
     ) {
         IssuedItemSummaryResponseDTO summary = issueProductionService
-                .getGroupedIssuedItemsWithMeta(issueNumber, companyId, branchId);
+                .getIssuedBatchesWithMeta(issueNumber, companyId, branchId);
 
         return ResponseEntity.ok(new ApiResponse<>(true, "Fetched summary", summary));
     }
