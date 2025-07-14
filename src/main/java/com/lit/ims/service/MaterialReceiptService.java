@@ -1,9 +1,6 @@
 package com.lit.ims.service;
 
-import com.lit.ims.dto.MaterialReceiptDTO;
-import com.lit.ims.dto.MaterialReceiptItemDTO;
-import com.lit.ims.dto.PendingQcItemsDTO;
-import com.lit.ims.dto.UpdateQcStatusDTO;
+import com.lit.ims.dto.*;
 import com.lit.ims.entity.Item;
 import com.lit.ims.entity.MaterialReceipt;
 import com.lit.ims.entity.MaterialReceiptItem;
@@ -447,5 +444,20 @@ public class MaterialReceiptService {
             return new ApiResponse<>(false, "Error: " + e.getMessage(), null);
         }
     }
+
+    public ApiResponse<IqcStatusCountDTO> getIqcStatusCounts(Long companyId, Long branchId) {
+        long pendingCount = materialReceiptItemRepository
+                .countByQcStatusIgnoreCaseAndReceipt_CompanyIdAndReceipt_BranchId("PENDING", companyId, branchId);
+
+        long passCount = materialReceiptItemRepository
+                .countByQcStatusIgnoreCaseAndReceipt_CompanyIdAndReceipt_BranchId("PASS", companyId, branchId);
+
+        long failCount = materialReceiptItemRepository
+                .countByQcStatusIgnoreCaseAndReceipt_CompanyIdAndReceipt_BranchId("FAIL", companyId, branchId);
+
+        IqcStatusCountDTO dto = new IqcStatusCountDTO(pendingCount, passCount, failCount);
+        return new ApiResponse<>(true, "IQC status counts fetched successfully", dto);
+    }
+
 
 }
