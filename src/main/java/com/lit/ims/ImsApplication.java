@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 
 @SpringBootApplication
 @EnableMethodSecurity
+
 //public class ImsApplication implements CommandLineRunner {
 public class ImsApplication {
 

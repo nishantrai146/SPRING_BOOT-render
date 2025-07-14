@@ -36,7 +36,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 Long companyId = jwtService.extractCompanyId(token);
                 Long branchId = jwtService.extractBranchId(token);
 
+
                 // ✅ Put companyId and branchId in request scope
+                request.setAttribute("username",username);
                 request.setAttribute("companyId", companyId);
                 request.setAttribute("branchId", branchId);
 

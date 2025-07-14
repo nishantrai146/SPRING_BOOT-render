@@ -15,8 +15,6 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
     Optional<Item> findByIdAndCompanyIdAndBranchId(Long id, Long companyId, Long branchId);
 
     boolean existsByCodeAndCompanyIdAndBranchId(String code, Long companyId, Long branchId);
-    Optional<Warehouse> findTopByCompanyIdAndBranchIdOrderByIdDesc(Long companyId, Long branchId);
-
     Optional<Item> findByCode(String code);
     Optional<Item> findByCodeAndCompanyIdAndBranchId(String code, Long companyId, Long branchId);
 

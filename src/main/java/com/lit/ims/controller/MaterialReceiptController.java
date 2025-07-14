@@ -96,24 +96,39 @@ public class MaterialReceiptController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/issue-fifo")
-    public ResponseEntity<ApiResponse<MaterialReceiptItemDTO>> verifyAndIssueBatchFifo(
+    @PostMapping("/batches/reserve")
+    public ResponseEntity<ApiResponse<MaterialReceiptItemDTO>> reserveBatch(
             @RequestParam String batchNo,
-            @RequestAttribute Long companyId,
-            @RequestAttribute Long branchId
+            @RequestAttribute("companyId") Long companyId,
+            @RequestAttribute("branchId") Long branchId,
+            @RequestAttribute("username") String username) {
+        return ResponseEntity.ok(receiptService.verifyBatchAndReserveIfFifo(batchNo, companyId, branchId, username));
+    }
+
+    @DeleteMapping("/release-reservation")
+    public ResponseEntity<ApiResponse<String>> releaseReservedBatch(
+            @RequestParam String batchNo,
+            @RequestAttribute("companyId") Long companyId,
+            @RequestAttribute("branchId") Long branchId,
+            @RequestAttribute("username") String username
     ) {
         return ResponseEntity.ok(
-                receiptService.verifyBatchAndIssueIfFifo(batchNo, companyId, branchId)
+                receiptService.releaseReservedBatch(batchNo, companyId, branchId, username)
         );
     }
 
-    @DeleteMapping("/release")
-    public ResponseEntity<ApiResponse<String>> releaseIssuedBatch(
+
+    @PostMapping("/batches/confirm")
+    public ResponseEntity<ApiResponse<String>> confirmIssuedBatch(
             @RequestParam String batchNo,
-            @RequestAttribute Long companyId,
-            @RequestAttribute Long branchId) {
-        return ResponseEntity.ok(receiptService.releaseIssuedBatch(batchNo, companyId, branchId));
+            @RequestAttribute("companyId") Long companyId,
+            @RequestAttribute("branchId") Long branchId,
+            @RequestAttribute("username") String username) {
+
+        return ResponseEntity.ok(
+                receiptService.confirmIssuedBatch(batchNo, companyId, branchId, username));
     }
+
 
 
 
