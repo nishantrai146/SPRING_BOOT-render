@@ -1,9 +1,6 @@
 package com.lit.ims.controller;
 
-import com.lit.ims.dto.MaterialReceiptDTO;
-import com.lit.ims.dto.MaterialReceiptItemDTO;
-import com.lit.ims.dto.PendingQcItemsDTO;
-import com.lit.ims.dto.UpdateQcStatusDTO;
+import com.lit.ims.dto.*;
 import com.lit.ims.response.ApiResponse;
 import com.lit.ims.service.MaterialReceiptService;
 import lombok.RequiredArgsConstructor;
@@ -127,6 +124,13 @@ public class MaterialReceiptController {
 
         return ResponseEntity.ok(
                 receiptService.confirmIssuedBatch(batchNo, companyId, branchId, username));
+    }
+
+    @GetMapping("/iqc-count")
+    public ApiResponse<IqcStatusCountDTO> getIqcStatusCounts(
+            @RequestAttribute("companyId") Long companyId,
+            @RequestAttribute("branchId") Long branchId) {
+        return receiptService.getIqcStatusCounts(companyId, branchId);
     }
 
 

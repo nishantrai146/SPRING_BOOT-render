@@ -25,6 +25,7 @@ public interface MaterialReceiptItemRepository extends JpaRepository<MaterialRec
 
     List<MaterialReceiptItem> findAllByReservedAtBeforeAndIsIssuedFalse(LocalDateTime cutoff);
 
+    long countByQcStatusIgnoreCaseAndReceipt_CompanyIdAndReceipt_BranchId(String status, Long companyId, Long branchId);
 
 
 
