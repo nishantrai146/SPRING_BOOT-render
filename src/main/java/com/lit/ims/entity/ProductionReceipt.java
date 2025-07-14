@@ -30,4 +30,8 @@ public class ProductionReceipt {
     private String createdBy;
     @OneToMany(mappedBy = "receipt",cascade = CascadeType.ALL,orphanRemoval = true)
     private List<ProductionReceiptItem> items;
+    private String type;
+
+    @Enumerated(EnumType.STRING)
+    private IssueStatus status;
 }
