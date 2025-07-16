@@ -62,4 +62,8 @@ public class MaterialReceiptItem {
     @Column(name = "reserved_at")
     private LocalDateTime reservedAt;
 
+    @Column(name = "adjustment_locked", nullable = false)
+    private boolean adjustmentLocked = false; // ✅ default value added here
+
+
 }

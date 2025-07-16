@@ -2,6 +2,8 @@ package com.lit.ims.service;
 
 
 import com.lit.ims.dto.ConfirmReceiptDTO;
+import com.lit.ims.dto.ItemCodeNameDTO;
+import com.lit.ims.dto.ProductionReceiptTableDTO;
 import com.lit.ims.entity.*;
 import com.lit.ims.repository.IssuedBatchItemsRepository;
 import com.lit.ims.repository.ProductionReceiptRepository;
@@ -9,7 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -102,5 +106,35 @@ public class ProductionReceiptService {
         receiptRepo.save(header);
     }
 
+    @Transactional(readOnly = true)
+    public List<ProductionReceiptTableDTO> listReceiptsForTable(Long companyId,
+                                                                Long branchId) {
+
+        return receiptRepo
+                .findByCompanyIdAndBranchIdOrderByReceiptDateDesc(companyId, branchId)
+                .stream()
+                .map(r -> {
+
+                    // distinct itemCode + itemName pairs for the Items column
+                    List<ItemCodeNameDTO> itemList = r.getItems().stream()
+                            .collect(Collectors.toMap(
+                                    ProductionReceiptItem::getItemCode,
+                                    ProductionReceiptItem::getItemName,
+                                    (n1, n2) -> n1,                 // ignore dups
+                                    LinkedHashMap::new))
+                            .entrySet().stream()
+                            .map(e -> new ItemCodeNameDTO(e.getKey(), e.getValue()))
+                            .toList();
+
+                    return ProductionReceiptTableDTO.builder()
+                            .transactionNumber(r.getTransactionNumber())
+                            .receiptDate(r.getReceiptDate())
+                            .type(r.getType())
+                            .items(itemList)
+                            .status(r.getStatus().name())
+                            .build();
+                })
+                .toList();
+    }
 
 }

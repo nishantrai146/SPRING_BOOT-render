@@ -152,6 +152,11 @@ public class MaterialReceiptService {
             if (batchNo == null || batchNo.length() < 28) {
                 return new ApiResponse<>(false, "Invalid batch number format", null);
             }
+            if (materialReceiptItemRepository
+                    .existsByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(batchNo, companyId, branchId)) {
+                return new ApiResponse<>(false,
+                        "Batch number " + batchNo + " already exists in Material Receipt", null);
+            }
 
             /* 2. Parse vendor & item codes from the barcode */
             String vendorCode = batchNo.substring(1, 7);   // chars 1‑6
@@ -324,6 +329,11 @@ public class MaterialReceiptService {
 
             if (actualItem.isIssued()) {
                 return new ApiResponse<>(false, "Batch already issued: " + batchNo, null);
+            }
+
+            if (actualItem.isAdjustmentLocked()) {
+                return new ApiResponse<>(false,
+                        "Batch is locked pending admin approval of a quantity adjustment", null);
             }
 
             // 🔑 Allow if already reserved *by this user*; block if by someone else

@@ -1,12 +1,15 @@
 package com.lit.ims.controller;
 
 import com.lit.ims.dto.ConfirmReceiptDTO;
+import com.lit.ims.dto.ProductionReceiptTableDTO;
 import com.lit.ims.repository.ProductionReceiptRepository;
 import com.lit.ims.response.ApiResponse;
 import com.lit.ims.service.ProductionReceiptService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/production-receipt")
@@ -22,6 +25,17 @@ public class ProductionReceiptController {
             ){
         productionReceiptService.confirmReceipt(dto,companyId,branchId,username);
         return ResponseEntity.ok(new ApiResponse<>(true,"Receipt Confirmed",null));
+    }
+
+    @GetMapping("/table")
+    public ResponseEntity<ApiResponse<List<ProductionReceiptTableDTO>>> listTable(
+            @RequestAttribute Long companyId,
+            @RequestAttribute Long branchId) {
+
+        List<ProductionReceiptTableDTO> data =
+                productionReceiptService.listReceiptsForTable(companyId, branchId);
+
+        return ResponseEntity.ok(new ApiResponse<>(true, "Fetched receipts", data));
     }
 
 }
