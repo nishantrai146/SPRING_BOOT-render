@@ -183,6 +183,7 @@ public class StockAdjustmentService {
                 .oldQty(r.getOldQty())
                 .requestedQty(r.getRequestedQty())
                 .diff(r.getDiff())
+                .reason(r.getReason())
                 .status(r.getStatus())
                 .requestedBy(r.getRequestedBy())
                 .requestedAt(r.getRequestedAt())
