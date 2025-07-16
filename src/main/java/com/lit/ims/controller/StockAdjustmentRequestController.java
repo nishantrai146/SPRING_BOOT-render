@@ -31,15 +31,17 @@ public class StockAdjustmentRequestController {
                 dto, companyId, branchId, principal.getName());
     }
 
-    // 🔵 2. Admin views all requests (filtered by status: PENDING, APPROVED, REJECTED)
     @GetMapping
     @PreAuthorize("hasAuthority('ROLE_OWNER')")
-    public List<AdjustmentRequestResponseDTO> listRequests(
+    public ApiResponse<List<AdjustmentRequestResponseDTO>> listRequests(
             @RequestParam(defaultValue = "PENDING") AdjustmentStatus status,
             @RequestAttribute Long companyId,
             @RequestAttribute Long branchId) {
 
-        return stockAdjustmentService.findByStatus(status, companyId, branchId);
+        List<AdjustmentRequestResponseDTO> list =
+                stockAdjustmentService.findByStatus(status, companyId, branchId);
+
+        return ApiResponse.ok("List fetched", list);
     }
 
     // ✅ 3. Admin approves a request
