@@ -331,6 +331,11 @@ public class MaterialReceiptService {
                 return new ApiResponse<>(false, "Batch already issued: " + batchNo, null);
             }
 
+            if (actualItem.isAdjustmentLocked()) {
+                return new ApiResponse<>(false,
+                        "Batch is locked pending admin approval of a quantity adjustment", null);
+            }
+
             // 🔑 Allow if already reserved *by this user*; block if by someone else
             if (actualItem.getReservedBy() != null && !actualItem.getReservedBy().equals(username)) {
                 return new ApiResponse<>(false, "Batch is already reserved by another user", null);
