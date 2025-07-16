@@ -47,7 +47,7 @@ public class MaterialReceiptController {
             @RequestParam String batchNo,
             @RequestAttribute("companyId") Long companyId,
             @RequestAttribute("branchId") Long branchId) {
-        return ResponseEntity.ok(receiptService.verifyBatchNumber(batchNo, companyId, branchId));
+        return ResponseEntity.ok(receiptService.verifyBatchAndFetchDetails(batchNo, companyId, branchId));
     }
 
     @GetMapping("/pending-qc")

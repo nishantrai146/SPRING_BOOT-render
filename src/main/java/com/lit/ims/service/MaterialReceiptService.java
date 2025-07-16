@@ -144,43 +144,55 @@ public class MaterialReceiptService {
         return prefix + String.format("%05d", next);
     }
 
-    public ApiResponse<MaterialReceiptItemDTO> verifyBatchNumber(String batchNo, Long companyId, Long branchId) {
+    public ApiResponse<MaterialReceiptItemDTO> verifyBatchAndFetchDetails(
+            String batchNo, Long companyId, Long branchId) {
+
         try {
-            if (batchNo.length() < 28) {
+            /* 1. Basic length check */
+            if (batchNo == null || batchNo.length() < 28) {
                 return new ApiResponse<>(false, "Invalid batch number format", null);
             }
 
-            String vendorCode = batchNo.substring(1, 7);       // 6 chars
-            String itemCode = batchNo.substring(7, 13);        // 6 chars
+            /* 2. Parse vendor & item codes from the barcode */
+            String vendorCode = batchNo.substring(1, 7);   // chars 1‑6
+            String itemCode   = batchNo.substring(7, 13);  // chars 7‑12
 
+            /* 3. Fetch all vendor‑item mappings for this vendor in the current branch */
             List<VendorItemsMaster> vendorItems = vendorItemsRepo
                     .findByVendorCodeAndCompanyIdAndBranchId(vendorCode, companyId, branchId);
 
             if (vendorItems.isEmpty()) {
-                return new ApiResponse<>(false, "Invalid Vendor Code: " + vendorCode, null);
+                return new ApiResponse<>(false,
+                        "Invalid Vendor Code: " + vendorCode, null);
             }
 
-            Optional<VendorItemsMaster> match = vendorItems.stream()
-                    .filter(item -> item.getItemCode().equals(itemCode))
-                    .findFirst();
+            /* 4. Find the matching item code */
+            VendorItemsMaster master = vendorItems.stream()
+                    .filter(vim -> vim.getItemCode().equals(itemCode))
+                    .findFirst()
+                    .orElse(null);
 
-            if (match.isEmpty()) {
-                return new ApiResponse<>(false, "Item Code " + itemCode + " not found under Vendor " + vendorCode, null);
+            if (master == null) {
+                return new ApiResponse<>(false,
+                        "Item Code " + itemCode + " not found under Vendor " + vendorCode, null);
             }
 
-            VendorItemsMaster master = match.get();
+            /* 5. Build DTO straight from VendorItemsMaster */
+            MaterialReceiptItemDTO dto = MaterialReceiptItemDTO.builder()
+                    .batchNo(batchNo)
+                    .vendorCode(vendorCode)
+                    .vendorName(master.getVendorName())           // assumes column exists
+                    .itemCode(master.getItemCode())
+                    .itemName(master.getItemName())
+                    .quantity(master.getQuantity())               // or getStockQty(), etc.
+                    .build();
 
-            MaterialReceiptItemDTO dto = new MaterialReceiptItemDTO();
-            dto.setItemCode(master.getItemCode());
-            dto.setItemName(master.getItemName());
-            dto.setQuantity(fetchItemQuantity(master.getItemCode(), companyId, branchId));
-            dto.setBatchNo(batchNo);
+            return new ApiResponse<>(true, "Batch verified", dto);
 
-            return new ApiResponse<>(true, "Batch number verified", dto);
-
-        } catch (Exception e) {
-            log.error("Error verifying batch number", e);
-            return new ApiResponse<>(false, "Error verifying batch number: " + e.getMessage(), null);
+        } catch (Exception ex) {
+            log.error("Error verifying batch number", ex);
+            return new ApiResponse<>(false,
+                    "Error verifying batch number: " + ex.getMessage(), null);
         }
     }
 
