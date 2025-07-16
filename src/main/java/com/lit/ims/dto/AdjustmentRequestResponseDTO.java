@@ -18,4 +18,7 @@ public class AdjustmentRequestResponseDTO {
     private AdjustmentStatus status;
     private String requestedBy;
     private LocalDateTime requestedAt;
+
+    private String itemCode;
+    private String itemName;
 }

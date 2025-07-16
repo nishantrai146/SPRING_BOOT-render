@@ -21,6 +21,7 @@ public class StockAdjustmentService {
     private final StockAdjustmentRequestRepository reqRepo;
     private final StockAdjustmentRepository adjRepo;
     private final TransactionLogService logService;
+    private final MaterialReceiptItemRepository materialReceiptItemRepository;
 
     /* ----------------------------------------------------------------
        OPERATOR:  create a quantity‑change request
@@ -173,16 +174,20 @@ public class StockAdjustmentService {
        Mapper
        ---------------------------------------------------------------- */
     private AdjustmentRequestResponseDTO toDTO(StockAdjustmentRequest r) {
+        MaterialReceiptItem mi = itemRepo.findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(
+                r.getBatchNo(), r.getCompanyId(), r.getBranchId()
+        ).orElse(null);
         return AdjustmentRequestResponseDTO.builder()
                 .id(r.getId())
                 .batchNo(r.getBatchNo())
                 .oldQty(r.getOldQty())
                 .requestedQty(r.getRequestedQty())
                 .diff(r.getDiff())
-                .reason(r.getReason())
                 .status(r.getStatus())
                 .requestedBy(r.getRequestedBy())
                 .requestedAt(r.getRequestedAt())
+                .itemCode(mi != null ? mi.getItemCode() : null)
+                .itemName(mi != null ? mi.getItemName() : null)
                 .build();
     }
 }
