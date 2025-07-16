@@ -22,7 +22,7 @@ public class StockAdjustmentService {
     private final StockAdjustmentRepository adjRepo;
     private final TransactionLogService logService;
     private final MaterialReceiptItemRepository materialReceiptItemRepository;
-
+    private final VendorItemsMasterRepository vendorItemsMasterRepository;
     /* ----------------------------------------------------------------
        OPERATOR:  create a quantity‑change request
        ---------------------------------------------------------------- */
@@ -174,21 +174,50 @@ public class StockAdjustmentService {
        Mapper
        ---------------------------------------------------------------- */
     private AdjustmentRequestResponseDTO toDTO(StockAdjustmentRequest r) {
-        MaterialReceiptItem mi = itemRepo.findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(
-                r.getBatchNo(), r.getCompanyId(), r.getBranchId()
-        ).orElse(null);
+
+        /* Load the material‑receipt row to get itemCode + vendorCode */
+        MaterialReceiptItem mi = itemRepo
+                .findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(
+                        r.getBatchNo(), r.getCompanyId(), r.getBranchId())
+                .orElse(null);
+
+        /* Parse vendorCode & itemCode from the batchNo if the row is missing */
+        String vendorCode = null;
+        String itemCode   = null;
+        if (mi != null) {
+            vendorCode = mi.getReceipt().getVendorCode();    // if you store it
+            itemCode   = mi.getItemCode();
+        } else if (r.getBatchNo().length() >= 13) {
+            vendorCode = r.getBatchNo().substring(1, 7);
+            itemCode   = r.getBatchNo().substring(7, 13);
+        }
+
+        /* Look up the VendorItemsMaster row */
+        Integer masterQty = vendorItemsMasterRepository
+                .findByVendorCodeAndItemCode(vendorCode, itemCode)
+                .map(VendorItemsMaster::getQuantity)
+                .orElse(null);
+
+
+        Integer oldQty = masterQty != null
+                ? masterQty                // preferred: vendor master
+                : mi != null
+                ? mi.getQuantity()     // fallback: saved batch qty
+                : r.getOldQty();       // last resort: stored in request
+
         return AdjustmentRequestResponseDTO.builder()
                 .id(r.getId())
                 .batchNo(r.getBatchNo())
-                .oldQty(r.getOldQty())
+                .oldQty(oldQty)                    // 👈 now vendor master value
                 .requestedQty(r.getRequestedQty())
                 .diff(r.getDiff())
                 .reason(r.getReason())
                 .status(r.getStatus())
                 .requestedBy(r.getRequestedBy())
                 .requestedAt(r.getRequestedAt())
-                .itemCode(mi != null ? mi.getItemCode() : null)
+                .itemCode(mi != null ? mi.getItemCode() : itemCode)
                 .itemName(mi != null ? mi.getItemName() : null)
                 .build();
     }
+
 }

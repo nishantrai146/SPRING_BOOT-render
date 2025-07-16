@@ -17,4 +17,6 @@ public interface VendorItemsMasterRepository extends JpaRepository<VendorItemsMa
     boolean existsByVendorCodeAndItemCodeAndCompanyIdAndBranchId(String vendorCode, String itemCode, Long companyId, Long branchId);
 
     List<VendorItemsMaster> findByVendorCodeAndCompanyIdAndBranchId(String vendorCode,Long companyId,Long branchId);
+    Optional<VendorItemsMaster> findByVendorCodeAndItemCode(String vendorCode,
+                                                            String itemCode);
 }
