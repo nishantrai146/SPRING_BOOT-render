@@ -152,6 +152,11 @@ public class MaterialReceiptService {
             if (batchNo == null || batchNo.length() < 28) {
                 return new ApiResponse<>(false, "Invalid batch number format", null);
             }
+            if (materialReceiptItemRepository
+                    .existsByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(batchNo, companyId, branchId)) {
+                return new ApiResponse<>(false,
+                        "Batch number " + batchNo + " already exists in Material Receipt", null);
+            }
 
             /* 2. Parse vendor & item codes from the barcode */
             String vendorCode = batchNo.substring(1, 7);   // chars 1‑6
