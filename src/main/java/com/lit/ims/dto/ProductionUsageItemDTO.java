@@ -1,8 +1,10 @@
 package com.lit.ims.dto;
 
+import lombok.Builder;
 import lombok.Data;
 
 @Data
+@Builder
 public class ProductionUsageItemDTO {
     private Long id;
     private String itemCode;
