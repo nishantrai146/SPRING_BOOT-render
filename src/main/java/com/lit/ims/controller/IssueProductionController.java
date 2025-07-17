@@ -53,6 +53,16 @@ public class IssueProductionController {
     }
 
 
+    @GetMapping("/all-issue")
+    public ResponseEntity<ApiResponse<List<String >>> getCompletedIssue(
+            @RequestAttribute Long companyId,
+            @RequestAttribute Long branchId
+    ){
+        List<String> issueNumber=issueProductionService.getIssueNumberCompleted(companyId,branchId);
+        return ResponseEntity.ok(new ApiResponse<>(true,"Fetched issue number",issueNumber));
+    }
+
+
 
 
 
