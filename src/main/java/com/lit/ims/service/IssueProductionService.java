@@ -75,6 +75,15 @@ public class IssueProductionService {
                 .toList();
     }
 
+    public List<String> getIssueNumberCompleted(Long companyId,Long branchId){
+        return issueProductionRepository
+                .findAllByStatusAndCompanyIdAndBranchId(IssueStatus.COMPLETED,companyId,branchId)
+                .stream()
+                .map(IssueProduction::getIssueNumber)
+                .distinct()
+                .toList();
+    }
+
     public IssuedItemSummaryResponseDTO getIssuedBatchesWithMeta(
             String issueNumber, Long companyId, Long branchId) {
 
