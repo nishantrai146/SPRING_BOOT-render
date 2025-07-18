@@ -7,6 +7,10 @@ import lombok.Data;
 @Data
 public class State {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true,nullable = false)
     private String iso2; // e.g., MH
 
     private String name;
