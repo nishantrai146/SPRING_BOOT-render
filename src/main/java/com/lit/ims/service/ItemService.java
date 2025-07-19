@@ -30,8 +30,6 @@ public class ItemService {
                 .name(request.getName())
                 .code(request.getCode())
                 .uom(request.getUom())
-                .type(request.getType())
-                .barcode(request.getBarcode())
                 .groupName(request.getGroupName())
                 .status(request.getStatus())
                 .price(request.getPrice())
@@ -73,8 +71,6 @@ public class ItemService {
                     item.setName(dto.getName());
                     item.setCode(dto.getCode());
                     item.setUom(dto.getUom());
-                    item.setType(dto.getType());
-                    item.setBarcode(dto.getBarcode());
                     item.setGroupName(dto.getGroupName());
                     item.setStatus(dto.getStatus());
                     item.setPrice(dto.getPrice());

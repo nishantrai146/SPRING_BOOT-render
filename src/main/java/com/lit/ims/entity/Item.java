@@ -2,6 +2,11 @@ package com.lit.ims.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -9,6 +14,7 @@ import lombok.*;
 @Builder
 @Entity
 @Table(name = "item_master")
+@EntityListeners(AuditingEntityListener.class)
 public class Item {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,8 +27,6 @@ public class Item {
     private String code;
 
     private String uom;
-    private String type;
-    private String barcode;
 
     @Column(name = "`group`")
     private String groupName;
@@ -40,4 +44,11 @@ public class Item {
 
     private boolean isInventoryItem;
     private boolean isIqc;
+
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
 }
