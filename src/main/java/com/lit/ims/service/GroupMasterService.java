@@ -41,6 +41,9 @@ public class GroupMasterService {
         if (groupRepo.existsByNameAndCompanyIdAndBranchId(dto.getName(), companyId, branchId)) {
             throw new DuplicateResourceException("Group name already exists.");
         }
+        if(groupRepo.existsByCodeAndCompanyIdAndBranchId(dto.getCode(),companyId,branchId)){
+            throw new DuplicateResourceException("Code Already exist for a Group");
+        }
 
         String trno = generateTrno(companyId, branchId);
 
@@ -48,6 +51,7 @@ public class GroupMasterService {
                 .trno(trno)
                 .name(dto.getName())
                 .status(dto.getStatus())
+                .code(dto.getCode())
                 .companyId(companyId)
                 .branchId(branchId)
                 .build();
@@ -63,6 +67,7 @@ public class GroupMasterService {
 
         group.setName(dto.getName());
         group.setStatus(dto.getStatus());
+        group.setCode(dto.getCode());
 
         GroupMaster updated = groupRepo.save(group);
         return mapToDTO(updated);
@@ -112,6 +117,7 @@ public class GroupMasterService {
                 .trno(entity.getTrno())
                 .name(entity.getName())
                 .status(entity.getStatus())
+                .code(entity.getCode())
                 .build();
     }
 }

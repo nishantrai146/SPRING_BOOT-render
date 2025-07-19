@@ -14,4 +14,5 @@ public class GroupMasterDTO {
     private String trno;
     private String name;
     private String status;
+    private String code;
 }

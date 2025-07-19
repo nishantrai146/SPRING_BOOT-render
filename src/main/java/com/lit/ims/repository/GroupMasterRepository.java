@@ -15,4 +15,5 @@ public interface GroupMasterRepository extends JpaRepository<GroupMaster, Long> 
     List<GroupMaster> findByCompanyIdAndBranchId(Long companyId, Long branchId);
 
     boolean existsByNameAndCompanyIdAndBranchId(String name, Long companyId, Long branchId);
+    boolean existsByCodeAndCompanyIdAndBranchId(String code,Long companyId,Long branchId);
 }
