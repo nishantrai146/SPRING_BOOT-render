@@ -40,12 +40,13 @@ public class WarehouseService {
         return prefix + date + String.format("%03d", nextSequence);
     }
 
-    // ✅ Save
-    public WarehouseDTO saveWarehouse(Warehouse warehouse, Long companyId, Long branchId) {
-        if (warehouseRepository.existsByCodeAndCompanyIdAndBranchId(warehouse.getCode(), companyId, branchId)) {
-            throw new IllegalArgumentException("Code '" + warehouse.getCode() + "' already exists.");
+    // ✅ Save from DTO
+    public WarehouseDTO saveWarehouse(WarehouseDTO dto, Long companyId, Long branchId) {
+        if (warehouseRepository.existsByCodeAndCompanyIdAndBranchId(dto.getCode(), companyId, branchId)) {
+            throw new IllegalArgumentException("Code '" + dto.getCode() + "' already exists.");
         }
 
+        Warehouse warehouse = fromDTO(dto);
         warehouse.setCompanyId(companyId);
         warehouse.setBranchId(branchId);
         warehouse.setTrno(generateNextTrno(companyId, branchId));
@@ -62,20 +63,21 @@ public class WarehouseService {
         return toDTO(saved);
     }
 
-    // ✅ Update
+    // ✅ Update from DTO
     @Transactional
-    public WarehouseDTO updateWarehouse(Long id, Warehouse updated, Long companyId, Long branchId) {
+    public WarehouseDTO updateWarehouse(Long id, WarehouseDTO dto, Long companyId, Long branchId) {
         Warehouse existing = warehouseRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
                 .orElseThrow(() -> new IllegalArgumentException("Warehouse not found with ID: " + id));
 
-        if (!existing.getCode().equals(updated.getCode()) &&
-                warehouseRepository.existsByCodeAndCompanyIdAndBranchId(updated.getCode(), companyId, branchId)) {
-            throw new IllegalArgumentException("Code '" + updated.getCode() + "' already exists.");
+        if (!existing.getCode().equals(dto.getCode()) &&
+                warehouseRepository.existsByCodeAndCompanyIdAndBranchId(dto.getCode(), companyId, branchId)) {
+            throw new IllegalArgumentException("Code '" + dto.getCode() + "' already exists.");
         }
 
-        existing.setCode(updated.getCode());
-        existing.setName(updated.getName());
-        existing.setStatus(updated.getStatus());
+        existing.setCode(dto.getCode());
+        existing.setName(dto.getName());
+        existing.setStatus(dto.getStatus());
+        existing.setType(dto.getType());
 
         Warehouse saved = warehouseRepository.save(existing);
 
@@ -120,7 +122,6 @@ public class WarehouseService {
         );
     }
 
-
     // ✅ Delete Multiple
     @Transactional
     public void deleteMultipleWarehouses(List<Long> ids, Long companyId, Long branchId) {
@@ -152,6 +153,18 @@ public class WarehouseService {
                 .code(warehouse.getCode())
                 .name(warehouse.getName())
                 .status(warehouse.getStatus())
+                .type(warehouse.getType())
+                .build();
+    }
+
+    // ✅ Convert DTO to Entity
+    public Warehouse fromDTO(WarehouseDTO dto) {
+        return Warehouse.builder()
+                .id(dto.getId())
+                .code(dto.getCode())
+                .name(dto.getName())
+                .status(dto.getStatus())
+                .type(dto.getType())
                 .build();
     }
 }

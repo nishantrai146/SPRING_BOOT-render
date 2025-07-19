@@ -1,7 +1,6 @@
 package com.lit.ims.controller;
 
 import com.lit.ims.dto.WarehouseDTO;
-import com.lit.ims.entity.Warehouse;
 import com.lit.ims.response.ApiResponse;
 import com.lit.ims.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
@@ -21,11 +20,11 @@ public class WarehouseController {
     // ✅ Create
     @PostMapping("/add")
     public ResponseEntity<ApiResponse<WarehouseDTO>> addWarehouse(
-            @RequestBody Warehouse warehouse,
+            @RequestBody WarehouseDTO warehouseDTO,
             @RequestAttribute("companyId") Long companyId,
             @RequestAttribute("branchId") Long branchId
     ) {
-        WarehouseDTO saved = warehouseService.saveWarehouse(warehouse, companyId, branchId);
+        WarehouseDTO saved = warehouseService.saveWarehouse(warehouseDTO, companyId, branchId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Warehouse added successfully", saved));
     }
 
@@ -33,11 +32,11 @@ public class WarehouseController {
     @PutMapping("/update/{id}")
     public ResponseEntity<ApiResponse<WarehouseDTO>> updateWarehouse(
             @PathVariable Long id,
-            @RequestBody Warehouse warehouse,
+            @RequestBody WarehouseDTO warehouseDTO,
             @RequestAttribute("companyId") Long companyId,
             @RequestAttribute("branchId") Long branchId
     ) {
-        WarehouseDTO updated = warehouseService.updateWarehouse(id, warehouse, companyId, branchId);
+        WarehouseDTO updated = warehouseService.updateWarehouse(id, warehouseDTO, companyId, branchId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Warehouse updated successfully", updated));
     }
 
@@ -63,7 +62,6 @@ public class WarehouseController {
     }
 
     // ✅ Delete by ID
-
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<ApiResponse<String>> deleteWarehouse(
             @PathVariable Long id,
@@ -73,7 +71,6 @@ public class WarehouseController {
         warehouseService.deleteWarehouse(id, companyId, branchId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Warehouse deleted successfully", null));
     }
-
 
     // ✅ Delete Multiple
     @PostMapping("/delete-multiple")
