@@ -1,5 +1,6 @@
 package com.lit.ims.dto;
 
+import com.lit.ims.entity.WarehouseType;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
@@ -20,4 +21,5 @@ public class WarehouseDTO {
     private String name;
 
     private String status;
+    private WarehouseType type;
 }
