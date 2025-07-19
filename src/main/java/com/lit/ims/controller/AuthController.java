@@ -62,14 +62,21 @@ public class AuthController {
 
         // ✅ Return branches assigned to this user
         List<Map<String, Object>> branches = user.getBranches().stream()
-                .map(branch -> {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("id", branch.getId());
-                    map.put("code", branch.getCode());
-                    map.put("name", branch.getName());
-                    return map;
-                })
+                .collect(Collectors.toMap(
+                        Branch::getId, // use branch ID as key
+                        branch -> {
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("id", branch.getId());
+                            map.put("code", branch.getCode());
+                            map.put("name", branch.getName());
+                            return map;
+                        },
+                        (existing, replacement) -> existing // if duplicate ID, keep one
+                ))
+                .values()
+                .stream()
                 .collect(Collectors.toList());
+
 
         Map<String, Object> data = new HashMap<>();
         data.put("companyId", user.getCompany().getId());
