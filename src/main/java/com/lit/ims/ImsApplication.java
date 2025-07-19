@@ -1,9 +1,9 @@
 package com.lit.ims;
 
-//import com.lit.ims.service.UserService;
-//
-//import org.springframework.beans.factory.annotation.Autowired;
-//import org.springframework.boot.CommandLineRunner;
+
+import org.springframework.boot.CommandLineRunner;
+import com.lit.ims.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -13,19 +13,19 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 @EnableMethodSecurity
 @EnableScheduling
 
-//public class ImsApplication implements CommandLineRunner {
-public class ImsApplication {
+public class ImsApplication implements CommandLineRunner {
+//public class ImsApplication {
 
-//    @Autowired
-//    private UserService userService;
+    @Autowired
+    private UserService userService;
 
     public static void main(String[] args) {
         SpringApplication.run(ImsApplication.class, args);
     }
 
-//    @Override
-//    public void run(String... args) {
-//        userService.createOwnerIfNotExists();
-//    }
+    @Override
+    public void run(String... args) {
+        userService.createOwnerIfNotExists();
+    }
 
 }

@@ -31,28 +31,26 @@ public class UserService {
     public void createOwnerIfNotExists() {
         if (userRepo.findByUsername("owner").isEmpty()) {
 
-            Company defaultCompany = companyRepo.findByCode("LIT")
-                    .orElseGet(() -> {
-                        Company company = new Company();
-                        company.setCode("LIT");
-                        company.setName("LIT INDIA");
-                        company.setAddress("A-124 Sector 80");
-                        company.setPhone("0000000000");
-                        company.setEmail("default@example.com");
-                        return companyRepo.save(company);
-                    });
+            Company defaultCompany = companyRepo.findByCode("LIT").orElseGet(() -> {
+                Company company = new Company();
+                company.setCode("LIT");
+                company.setName("LIT INDIA");
+                company.setAddress("A-124 Sector 80");
+                company.setPhone("0000000000");
+                company.setEmail("default@example.com");
+                return companyRepo.save(company);
+            });
 
-            Branch defaultBranch = branchRepo.findByCodeAndCompanyId("HQ", defaultCompany.getId())
-                    .orElseGet(() -> {
-                        Branch branch = new Branch();
-                        branch.setCode("HQ");
-                        branch.setName("Headquarters");
-                        branch.setAddress("A-124 Sector 80");
-                        branch.setPhone("0000000000");
-                        branch.setEmail("hq@example.com");
-                        branch.setCompany(defaultCompany);
-                        return branchRepo.save(branch);
-                    });
+            Branch defaultBranch = branchRepo.findByCodeAndCompanyId("HQ", defaultCompany.getId()).orElseGet(() -> {
+                Branch branch = new Branch();
+                branch.setCode("HQ");
+                branch.setName("Headquarters");
+                branch.setAddress("A-124 Sector 80");
+                branch.setPhone("0000000000");
+                branch.setEmail("hq@example.com");
+                branch.setCompany(defaultCompany);
+                return branchRepo.save(branch);
+            });
 
             User owner = new User();
             owner.setUsername("owner");
@@ -66,8 +64,22 @@ public class UserService {
             owner.setCompany(defaultCompany);
             owner.setBranches(List.of(defaultBranch)); // ✅ Assign branch
 
-            userRepo.save(owner);
+            User savedOwner = userRepo.save(owner);
 
+            List<String> allPages = List.of("Dashboard", "Users", "Business Partner", "Vendor Items Master", "Item Master",
+                    "Warehouse Master", "BOM Master", "Type Master", "Group Master", "Part Master", "Store Material Inward",
+                    "Approve Items Quantity","Incoming Quality Control", "Material Issue Request", "Issue to Production", "Production Floor Receipt",
+                    "Production Material Usage","WIP Return","Inventory Audit Report","Activity Logs");
+            List<PagePermission> permissions = allPages.stream().map(p -> {
+                PagePermission perm = new PagePermission();
+                perm.setPageName(p);
+                perm.setCanView(true);
+                perm.setCanEdit(true);
+                perm.setUser(savedOwner);
+                return perm;
+            }).toList();
+            savedOwner.setPermissions(permissions);
+            userRepo.save(savedOwner);
             logService.log("CREATE", "User", null, "Owner account created automatically.");
         }
     }
@@ -85,11 +97,9 @@ public class UserService {
             throw new RuntimeException("Role must be ADMIN, MANAGER, or USER.");
         }
 
-        Company company = companyRepo.findById(companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + companyId));
+        Company company = companyRepo.findById(companyId).orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + companyId));
 
-        Branch defaultBranch = branchRepo.findById(branchId)
-                .orElseThrow(() -> new ResourceNotFoundException("Branch not found with ID: " + branchId));
+        Branch defaultBranch = branchRepo.findById(branchId).orElseThrow(() -> new ResourceNotFoundException("Branch not found with ID: " + branchId));
 
         List<Branch> branches = new ArrayList<>();
         if (req.getBranchIds() != null && !req.getBranchIds().isEmpty()) {
@@ -133,70 +143,31 @@ public class UserService {
 
         logService.log("CREATE", "User", saved.getId(), "Created user: " + saved.getUsername());
 
-        return ResponseEntity.ok(ApiResponse.builder()
-                .status(true)
-                .message("User created successfully")
-                .data(saved.getId())
-                .build());
+        return ResponseEntity.ok(ApiResponse.builder().status(true).message("User created successfully").data(saved.getId()).build());
     }
 
     // ✅ Get users by role
     public ResponseEntity<ApiResponse> getUsersByRolesAndCompanyBranch(List<Role> roles, Long companyId, Long branchId) {
         List<User> users = userRepo.findByRoleInAndCompanyIdAndBranchId(roles, companyId, branchId);
-        List<UserDto> userDtos = users.stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
+        List<UserDto> userDtos = users.stream().map(this::mapToDto).collect(Collectors.toList());
 
-        return ResponseEntity.ok(ApiResponse.builder()
-                .status(true)
-                .message("Users fetched successfully")
-                .data(userDtos)
-                .build());
+        return ResponseEntity.ok(ApiResponse.builder().status(true).message("Users fetched successfully").data(userDtos).build());
     }
 
     // ✅ Mapping User to DTO
     private UserDto mapToDto(User user) {
-        return UserDto.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .role(user.getRole())
-                .department(user.getDepartment())
-                .status(user.getStatus())
-                .lastLoginDateTime(user.getLastLoginDateTime())
-                .lastLoginIp(user.getLastLoginIp())
-                .companyId(user.getCompany() != null ? user.getCompany().getId() : null)
-                .companyName(user.getCompany() != null ? user.getCompany().getName() : null)
-                .branches(user.getBranches() != null
-                        ? user.getBranches().stream()
-                        .map(branch -> BranchInfoDto.builder()
-                                .id(branch.getId())
-                                .name(branch.getName())
-                                .code(branch.getCode())
-                                .build())
-                        .collect(Collectors.toList())
-                        : List.of())
-                .permissions(user.getPermissions() != null
-                        ? user.getPermissions().stream().map(p -> PermissionDto.builder()
-                        .pageName(p.getPageName())
-                        .canView(p.isCanView())
-                        .canEdit(p.isCanEdit())
-                        .build()).toList()
-                        : List.of())
-                .build();
+        return UserDto.builder().id(user.getId()).username(user.getUsername()).email(user.getEmail()).role(user.getRole()).department(user.getDepartment()).status(user.getStatus()).lastLoginDateTime(user.getLastLoginDateTime()).lastLoginIp(user.getLastLoginIp()).companyId(user.getCompany() != null ? user.getCompany().getId() : null).companyName(user.getCompany() != null ? user.getCompany().getName() : null).branches(user.getBranches() != null ? user.getBranches().stream().map(branch -> BranchInfoDto.builder().id(branch.getId()).name(branch.getName()).code(branch.getCode()).build()).collect(Collectors.toList()) : List.of()).permissions(user.getPermissions() != null ? user.getPermissions().stream().map(p -> PermissionDto.builder().pageName(p.getPageName()).canView(p.isCanView()).canEdit(p.isCanEdit()).build()).toList() : List.of()).build();
     }
 
     // ✅ Delete user with validation
     public ResponseEntity<ApiResponse> deleteUser(Long userId, Long companyId, Long branchId) {
-        User user = userRepo.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
+        User user = userRepo.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
         if (!user.getCompany().getId().equals(companyId)) {
             throw new RuntimeException("User does not belong to your company.");
         }
 
-        boolean branchMatch = user.getBranches().stream()
-                .anyMatch(branch -> branch.getId().equals(branchId));
+        boolean branchMatch = user.getBranches().stream().anyMatch(branch -> branch.getId().equals(branchId));
         if (!branchMatch) {
             throw new RuntimeException("User does not belong to your branch.");
         }
@@ -205,23 +176,17 @@ public class UserService {
 
         logService.log("DELETE", "User", userId, "Deleted user: " + user.getUsername());
 
-        return ResponseEntity.ok(ApiResponse.builder()
-                .status(true)
-                .message("User deleted successfully")
-                .data(null)
-                .build());
+        return ResponseEntity.ok(ApiResponse.builder().status(true).message("User deleted successfully").data(null).build());
     }
 
     public ResponseEntity<ApiResponse> getUserById(Long userId, Long companyId, Long branchId) {
-        User user = userRepo.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
+        User user = userRepo.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
         if (!user.getCompany().getId().equals(companyId)) {
             throw new RuntimeException("User does not belong to your company.");
         }
 
-        boolean branchMatch = user.getBranches().stream()
-                .anyMatch(branch -> branch.getId().equals(branchId));
+        boolean branchMatch = user.getBranches().stream().anyMatch(branch -> branch.getId().equals(branchId));
         if (!branchMatch) {
             throw new RuntimeException("User does not belong to your branch.");
         }
@@ -230,23 +195,17 @@ public class UserService {
 
         UserDto dto = mapToDto(user);
 
-        return ResponseEntity.ok(ApiResponse.builder()
-                .status(true)
-                .message("User fetched successfully")
-                .data(dto)
-                .build());
+        return ResponseEntity.ok(ApiResponse.builder().status(true).message("User fetched successfully").data(dto).build());
     }
 
     public ResponseEntity<ApiResponse> updateUser(Long userId, CreateUserRequest req, Long companyId, Long branchId) {
-        User user = userRepo.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
+        User user = userRepo.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
         if (!user.getCompany().getId().equals(companyId)) {
             throw new RuntimeException("User does not belong to your company.");
         }
 
-        boolean branchMatch = user.getBranches().stream()
-                .anyMatch(branch -> branch.getId().equals(branchId));
+        boolean branchMatch = user.getBranches().stream().anyMatch(branch -> branch.getId().equals(branchId));
         if (!branchMatch) {
             throw new RuntimeException("User does not belong to your branch.");
         }
@@ -308,11 +267,7 @@ public class UserService {
 
         logService.log("UPDATE", "User", saved.getId(), "Updated user details: " + saved.getUsername());
 
-        return ResponseEntity.ok(ApiResponse.builder()
-                .status(true)
-                .message("User updated successfully")
-                .data(saved.getId())
-                .build());
+        return ResponseEntity.ok(ApiResponse.builder().status(true).message("User updated successfully").data(saved.getId()).build());
     }
 
 }
