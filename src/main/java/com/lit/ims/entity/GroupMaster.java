@@ -30,7 +30,7 @@ public class GroupMaster {
     private String name;
 
     private String status;
-    private String code;
+    private String groupCode;
 
     @Column(nullable = false)
     private Long companyId;

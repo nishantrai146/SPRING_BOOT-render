@@ -10,9 +10,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class GroupMasterDTO {
-    private long id;
+    private Long id;
     private String trno;
     private String name;
     private String status;
-    private String code;
+    private String groupCode;
 }
