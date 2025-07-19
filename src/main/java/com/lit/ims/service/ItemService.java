@@ -30,8 +30,6 @@ public class ItemService {
                 .name(request.getName())
                 .code(request.getCode())
                 .uom(request.getUom())
-                .type(request.getType())
-                .barcode(request.getBarcode())
                 .groupName(request.getGroupName())
                 .status(request.getStatus())
                 .price(request.getPrice())
@@ -39,6 +37,8 @@ public class ItemService {
                 .life(request.getLife())
                 .companyId(companyId)
                 .branchId(branchId)
+                .isInventoryItem(request.isInventoryItem())
+                .isIqc(request.isIqc())
                 .build();
 
         Item savedItem = itemRepository.save(item);
@@ -63,21 +63,21 @@ public class ItemService {
     public Optional<Item> updateItem(Long id, ItemDTO dto, Long companyId, Long branchId) {
         return itemRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
                 .map(item -> {
-                    if (!item.getCode().equals(dto.getCode()) &&
-                            itemRepository.existsByCodeAndCompanyIdAndBranchId(dto.getCode(), companyId, branchId)) {
+                    if (itemRepository.existsByCodeAndCompanyIdAndBranchIdAndIdNot(
+                            dto.getCode(), companyId, branchId, id)) {
                         throw new RuntimeException("Item code already exists in this branch.");
                     }
 
                     item.setName(dto.getName());
                     item.setCode(dto.getCode());
                     item.setUom(dto.getUom());
-                    item.setType(dto.getType());
-                    item.setBarcode(dto.getBarcode());
                     item.setGroupName(dto.getGroupName());
                     item.setStatus(dto.getStatus());
                     item.setPrice(dto.getPrice());
                     item.setStQty(dto.getStQty());
                     item.setLife(dto.getLife());
+                    item.setInventoryItem(dto.isInventoryItem());
+                    item.setIqc(dto.isIqc());
 
                     Item updated = itemRepository.save(item);
 

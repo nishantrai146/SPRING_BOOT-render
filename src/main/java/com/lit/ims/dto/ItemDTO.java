@@ -6,14 +6,15 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ItemDTO {
+    private Long id;
     private String name;
     private String code;
     private String uom;
-    private String type;
-    private String barcode;
     private String groupName;
     private String status;
     private Double price;
     private Integer stQty;
     private Integer life;
+    private boolean isInventoryItem;
+    private boolean isIqc;
 }

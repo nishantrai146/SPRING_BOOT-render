@@ -13,6 +13,8 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
     List<Item> findByCompanyIdAndBranchId(Long companyId, Long branchId);
 
     Optional<Item> findByIdAndCompanyIdAndBranchId(Long id, Long companyId, Long branchId);
+    boolean existsByCodeAndCompanyIdAndBranchIdAndIdNot(String code, Long companyId, Long branchId, Long id);
+
 
     boolean existsByCodeAndCompanyIdAndBranchId(String code, Long companyId, Long branchId);
     Optional<Item> findByCode(String code);
