@@ -37,4 +37,7 @@ public class Item {
 
     @Column(name = "branch_id", nullable = false)
     private Long branchId;
+
+    private boolean isInventoryItem;
+    private boolean isIqc;
 }

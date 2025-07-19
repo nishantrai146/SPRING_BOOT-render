@@ -6,6 +6,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ItemDTO {
+    private Long id;
     private String name;
     private String code;
     private String uom;
@@ -16,4 +17,6 @@ public class ItemDTO {
     private Double price;
     private Integer stQty;
     private Integer life;
+    private boolean isInventoryItem;
+    private boolean isIqc;
 }
