@@ -1,6 +1,7 @@
 package com.lit.ims.repository;
 
 import com.lit.ims.entity.Warehouse;
+import com.lit.ims.entity.WarehouseType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -17,4 +18,6 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     List<Warehouse> findAllByCompanyIdAndBranchId(Long companyId, Long branchId);
 
     Optional<Warehouse> findByIdAndCompanyIdAndBranchId(Long id, Long companyId, Long branchId);
+
+    List<Warehouse> findByTypeInAndCompanyIdAndBranchId(List<WarehouseType> types,Long companyId,Long branchID);
 }

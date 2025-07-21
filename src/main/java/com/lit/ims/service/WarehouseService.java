@@ -2,6 +2,7 @@ package com.lit.ims.service;
 
 import com.lit.ims.dto.WarehouseDTO;
 import com.lit.ims.entity.Warehouse;
+import com.lit.ims.entity.WarehouseType;
 import com.lit.ims.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -122,6 +123,15 @@ public class WarehouseService {
         );
     }
 
+    @Transactional
+    public List<WarehouseDTO> getStoreAndIqcWarehuse(Long companyId,Long branchId){
+        List<Warehouse> warehouses=warehouseRepository.findByTypeInAndCompanyIdAndBranchId(List.of(WarehouseType.STR,WarehouseType.IQC),companyId,branchId);
+        return warehouses.stream().map(this::toDTO).toList();
+    }
+    public List<WarehouseDTO> getStoreAndRejWarehouse(Long companyId,Long branchId ){
+        List<Warehouse> warehouses=warehouseRepository.findByTypeInAndCompanyIdAndBranchId(List.of(WarehouseType.STR,WarehouseType.REJ),companyId,branchId);
+        return warehouses.stream().map(this::toDTO).toList();
+    }
     // ✅ Delete Multiple
     @Transactional
     public void deleteMultipleWarehouses(List<Long> ids, Long companyId, Long branchId) {

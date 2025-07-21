@@ -30,14 +30,14 @@ public class MaterialReceiptItem {
 
     private Integer quantity;
 
-    @Column(nullable = false)
+    @Column(unique = true)
     private String batchNo;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "receipt_id")
     private MaterialReceipt receipt;
 
-    @Column(nullable = false, name = "qc_status")
+    @Column(name = "qc_status")
     private String qcStatus;
 
     @Column(name = "defect_category")
@@ -64,6 +64,8 @@ public class MaterialReceiptItem {
 
     @Column(name = "adjustment_locked", nullable = false)
     private boolean adjustmentLocked = false; // ✅ default value added here
-
+    @ManyToOne
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
 
 }

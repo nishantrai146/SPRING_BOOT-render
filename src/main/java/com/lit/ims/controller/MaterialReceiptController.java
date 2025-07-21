@@ -66,13 +66,16 @@
         }
 
         @PutMapping("/qc-status/update")
-        public ApiResponse<String > updateQcStatus(
+        public ApiResponse<String> updateQcStatus(
                 @RequestBody UpdateQcStatusDTO dto,
                 @RequestAttribute("companyId") Long companyId,
-                @RequestAttribute("branchId") Long branchId
-        ){
-            return receiptService.updateQcStatus(dto,companyId,branchId);
+                @RequestAttribute("branchId") Long branchId,
+                @RequestAttribute("username") String username
+        ) {
+            receiptService.updateQcStatus(dto, companyId, branchId, username);
+            return new ApiResponse<>(true,"QC status updated successfully",null);
         }
+
 
         @GetMapping("/qc/item-by-batch")
         public ResponseEntity<ApiResponse<PendingQcItemsDTO>> getItemByBatchNo(
