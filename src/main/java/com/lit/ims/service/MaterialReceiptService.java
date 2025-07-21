@@ -35,7 +35,8 @@ public class MaterialReceiptService {
     private final InventoryStockRepository inventoryStockRepository;
     private final BatchSequenceTrackerRepository batchSequenceTrackerRepository;
     private final StockTransactionLogService stockTransactionLogService;
-
+    private final InventoryStockService inventoryStockService;
+    private final WarehouseTransferLogService warehouseTransferLogService;
 
     private Integer fetchItemQuantity(String itemCode, Long companyId, Long branchId) {
         return itemRepository.findByCodeAndCompanyIdAndBranchId(itemCode, companyId, branchId)
@@ -341,24 +342,80 @@ public class MaterialReceiptService {
 
     }
 
-    @Transactional
-    public ApiResponse<String> updateQcStatus(UpdateQcStatusDTO dto, Long companyId, Long branchId) {
+    public void updateQcStatus(UpdateQcStatusDTO dto, Long companyId, Long branchId, String username) {
         MaterialReceiptItem item = materialReceiptItemRepository.findById(dto.getId())
-                .orElseThrow(() -> new RuntimeException("Item not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found"));
 
-        item.setQcStatus(dto.getQcStatus().toUpperCase());
-
-        if ("FAIL".equalsIgnoreCase(dto.getQcStatus())) {
-            item.setDefectCategory(dto.getDefectCategory());
-            item.setRemarks(dto.getRemarks());
+        if (!item.getReceipt().getCompanyId().equals(companyId) || !item.getReceipt().getBranchId().equals(branchId)) {
+            throw new RuntimeException("Access denied for company/branch");
         }
 
+        // Set IQC status
+        item.setQcStatus(dto.getQcStatus());
+        item.setDefectCategory(dto.getDefectCategory());
+        item.setRemarks(dto.getRemarks());
         materialReceiptItemRepository.save(item);
 
-        logService.log("UPDATE", "MaterialReceiptItem", item.getId(),
-                "QC Status updated to " + dto.getQcStatus());
+        // From IQC to Store or Reject
+        Warehouse iqcWarehouse = warehouseRepository.findById(item.getWarehouse().getId())
+                .orElseThrow(() -> new RuntimeException("IQC warehouse not found"));
 
-        return new ApiResponse<>(true, "QC status updated successfully", null);
+        Warehouse targetWarehouse = warehouseRepository.findById(dto.getWarehouseId())
+                .orElseThrow(() -> new RuntimeException("Target warehouse not found"));
+
+        Integer quantity = item.getQuantity();
+        String itemCode = item.getItemCode();
+        String itemName = item.getItemName();
+
+        // ➤ Update target InventoryStock
+        inventoryStockService.addStock(
+                itemCode,
+                itemName,
+                targetWarehouse.getId(),
+                quantity,
+                companyId,
+                branchId
+        );
+
+        // ➤ Deduct from IQC InventoryStock
+        inventoryStockService.removeStock(
+                itemCode,
+                iqcWarehouse.getId(),
+                quantity,
+                companyId,
+                branchId
+        );
+
+        // ➤ Log Warehouse Transfer
+        warehouseTransferLogService.logTransfer(
+                itemCode,
+                itemName,  // ✅ Add this
+                quantity,
+                iqcWarehouse.getId(),
+                iqcWarehouse.getName(),
+                targetWarehouse.getId(),
+                targetWarehouse.getName(),
+                "QC_" + dto.getQcStatus().toUpperCase(),
+                "MaterialReceiptItem",
+                item.getId(),
+                companyId,
+                branchId,
+                username
+        );
+
+        // ➤ Log Stock Transaction
+        stockTransactionLogService.logTransaction(
+                itemCode,
+                itemName,
+                quantity,
+                "IQC_" + dto.getQcStatus().toUpperCase(),
+                "MaterialReceiptItem",
+                item.getId(),
+                companyId,
+                branchId,
+                targetWarehouse,
+                dto.getRemarks() != null ? dto.getRemarks() : "IQC Status Updated"
+        );
     }
 
     public ApiResponse<PendingQcItemsDTO> getitemByBatchNo(String batchNo, Long companyId, Long branchId) {

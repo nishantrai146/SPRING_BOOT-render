@@ -8,4 +8,5 @@ public class UpdateQcStatusDTO {
     private String qcStatus;
     private String defectCategory;
     private String remarks;
+    private Long warehouseId;
 }

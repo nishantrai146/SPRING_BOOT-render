@@ -128,7 +128,10 @@ public class WarehouseService {
         List<Warehouse> warehouses=warehouseRepository.findByTypeInAndCompanyIdAndBranchId(List.of(WarehouseType.STR,WarehouseType.IQC),companyId,branchId);
         return warehouses.stream().map(this::toDTO).toList();
     }
-
+    public List<WarehouseDTO> getStoreAndRejWarehouse(Long companyId,Long branchId ){
+        List<Warehouse> warehouses=warehouseRepository.findByTypeInAndCompanyIdAndBranchId(List.of(WarehouseType.STR,WarehouseType.REJ),companyId,branchId);
+        return warehouses.stream().map(this::toDTO).toList();
+    }
     // ✅ Delete Multiple
     @Transactional
     public void deleteMultipleWarehouses(List<Long> ids, Long companyId, Long branchId) {
