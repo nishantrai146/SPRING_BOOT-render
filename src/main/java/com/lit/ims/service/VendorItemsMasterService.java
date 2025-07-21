@@ -22,12 +22,11 @@ public class VendorItemsMasterService {
     private final ItemRepository itemRepository;
 
     private VendorItemsMasterDTO convertToDTO(VendorItemsMaster entity) {
-        Integer itemQuantity = itemRepository
+        Item item = itemRepository
                 .findByCodeAndCompanyIdAndBranchId(entity.getItemCode(),
                         entity.getCompanyId(),
                         entity.getBranchId())
-                .map(Item::getStQty)
-                .orElse(0);
+                .orElse(null);
 
         return VendorItemsMasterDTO.builder()
                 .id(entity.getId())
@@ -36,9 +35,11 @@ public class VendorItemsMasterService {
                 .itemCode(entity.getItemCode())
                 .itemName(entity.getItemName())
                 .days(entity.getDays())
-                .quantity(itemQuantity)
+                .quantity(entity.getQuantity())
                 .price(entity.getPrice())
                 .status(entity.getStatus())
+                .isInventory(item != null && Boolean.TRUE.equals(item.isInventoryItem()))
+                .isIqc(item != null && Boolean.TRUE.equals(item.isIqc()))
                 .build();
     }
 
@@ -58,7 +59,6 @@ public class VendorItemsMasterService {
                 .build();
     }
 
-    // ✅ Create
     @Transactional
     public VendorItemsMasterDTO save(VendorItemsMasterDTO dto, Long companyId, Long branchId) {
         if (repository.existsByVendorCodeAndItemCodeAndCompanyIdAndBranchId(
@@ -78,7 +78,6 @@ public class VendorItemsMasterService {
         return convertToDTO(saved);
     }
 
-    // ✅ Update
     @Transactional
     public VendorItemsMasterDTO update(Long id, VendorItemsMasterDTO dto, Long companyId, Long branchId) {
         VendorItemsMaster existing = repository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
@@ -112,14 +111,12 @@ public class VendorItemsMasterService {
         return convertToDTO(updated);
     }
 
-    // ✅ Get All
     public List<VendorItemsMasterDTO> getAll(Long companyId, Long branchId) {
         return repository.findByCompanyIdAndBranchId(companyId, branchId).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
-    // ✅ Get by ID
     public VendorItemsMasterDTO getById(Long id, Long companyId, Long branchId) {
         VendorItemsMaster entity = repository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
                 .orElseThrow(() -> new IllegalArgumentException("Vendor Item not found with ID: " + id));
@@ -134,7 +131,6 @@ public class VendorItemsMasterService {
         return convertToDTO(entity);
     }
 
-    // ✅ Delete Single
     @Transactional
     public void delete(Long id, Long companyId, Long branchId) {
         VendorItemsMaster entity = repository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
@@ -150,7 +146,6 @@ public class VendorItemsMasterService {
         );
     }
 
-    // ✅ Delete Multiple
     @Transactional
     public void deleteMultiple(List<Long> ids, Long companyId, Long branchId) {
         List<VendorItemsMaster> items = repository.findAllById(ids).stream()
@@ -174,11 +169,12 @@ public class VendorItemsMasterService {
                 "Deleted VendorItems with IDs: " + ids + " and VendorCodes: " + codes
         );
     }
-    @Transactional
-    public List<VendorItemsMasterDTO> getItemByVendor(String vendorCode,Long companyId,Long branchId){
-        List<VendorItemsMaster> items=repository.findByVendorCodeAndCompanyIdAndBranchId(vendorCode,companyId,branchId);
 
-        if(items.isEmpty()){
+    @Transactional
+    public List<VendorItemsMasterDTO> getItemByVendor(String vendorCode, Long companyId, Long branchId) {
+        List<VendorItemsMaster> items = repository.findByVendorCodeAndCompanyIdAndBranchId(vendorCode, companyId, branchId);
+
+        if (items.isEmpty()) {
             throw new IllegalArgumentException("No items found for Vendor Code: " + vendorCode);
         }
 

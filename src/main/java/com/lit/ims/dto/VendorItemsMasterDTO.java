@@ -21,4 +21,7 @@ public class VendorItemsMasterDTO {
     private Double price;
 
     private String status;
+
+    private Boolean isInventory;
+    private Boolean isIqc;
 }

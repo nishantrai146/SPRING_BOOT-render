@@ -82,4 +82,12 @@ public class WarehouseController {
         warehouseService.deleteMultipleWarehouses(ids, companyId, branchId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Selected warehouses deleted successfully", null));
     }
+
+    @GetMapping("/store-and-iqc")
+    private ResponseEntity<ApiResponse<List<WarehouseDTO>>> getStoreAndIqcWarehouse(
+            @RequestAttribute Long companyId,
+            @RequestAttribute Long branchId){
+        List<WarehouseDTO> dtos=warehouseService.getStoreAndIqcWarehuse(companyId,branchId);
+        return ResponseEntity.ok(new ApiResponse<>(true,"Warehouses",dtos));
+    }
 }

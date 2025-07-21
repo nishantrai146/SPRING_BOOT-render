@@ -1,14 +1,9 @@
 package com.lit.ims.service;
 
 import com.lit.ims.dto.*;
-import com.lit.ims.entity.Item;
-import com.lit.ims.entity.MaterialReceipt;
-import com.lit.ims.entity.MaterialReceiptItem;
-import com.lit.ims.entity.VendorItemsMaster;
-import com.lit.ims.repository.ItemRepository;
-import com.lit.ims.repository.MaterialReceiptItemRepository;
-import com.lit.ims.repository.MaterialReceiptRepository;
-import com.lit.ims.repository.VendorItemsMasterRepository;
+import com.lit.ims.entity.*;
+import com.lit.ims.exception.ResourceNotFoundException;
+import com.lit.ims.repository.*;
 import com.lit.ims.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -35,6 +31,11 @@ public class MaterialReceiptService {
     private final MaterialReceiptItemRepository materialReceiptItemRepository;
     private final TransactionLogService transactionLogService;
     private final ItemRepository itemRepository;
+    private final WarehouseRepository warehouseRepository;
+    private final InventoryStockRepository inventoryStockRepository;
+    private final BatchSequenceTrackerRepository batchSequenceTrackerRepository;
+    private final StockTransactionLogService stockTransactionLogService;
+
 
     private Integer fetchItemQuantity(String itemCode, Long companyId, Long branchId) {
         return itemRepository.findByCodeAndCompanyIdAndBranchId(itemCode, companyId, branchId)
@@ -95,26 +96,106 @@ public class MaterialReceiptService {
     @Transactional
     public ApiResponse<MaterialReceiptDTO> saveReceipt(MaterialReceiptDTO dto, Long companyId, Long branchId) {
         try {
-            log.info("Saving Material Receipt with vendor: {}, companyId: {}, branchId: {}", dto.getVendor(), companyId, branchId);
+            log.info("Saving Material Receipt for vendor: {}, companyId: {}, branchId: {}", dto.getVendor(), companyId, branchId);
 
-            // Log incoming items
-            if (dto.getItems() != null) {
-                dto.getItems().forEach(item -> log.info("Received Item: {}", item));
-            } else {
-                log.warn("No items found in the DTO");
+            // Create receipt header
+            MaterialReceipt receipt = MaterialReceipt.builder()
+                    .vendor(dto.getVendor())
+                    .vendorCode(dto.getVendorCode())
+                    .mode(dto.getMode())
+                    .companyId(companyId)
+                    .branchId(branchId)
+                    .build();
+
+            List<MaterialReceiptItem> items = new ArrayList<>();
+
+            for (MaterialReceiptItemDTO itemDTO : dto.getItems()) {
+                // Load Item Master
+                Item itemMaster = itemRepository.findByCodeAndCompanyIdAndBranchId(
+                        itemDTO.getItemCode(), companyId, branchId
+                ).orElseThrow(() -> new ResourceNotFoundException("Item not found: " + itemDTO.getItemCode()));
+
+                // Build item
+                MaterialReceiptItem.MaterialReceiptItemBuilder itemBuilder = MaterialReceiptItem.builder()
+                        .itemCode(itemDTO.getItemCode())
+                        .itemName(itemMaster.getName())
+                        .quantity(itemDTO.getQuantity())
+                        .receipt(receipt)
+                        .isIssued(false);
+
+                // ✅ If inventory item, validate and set batchNo, warehouse, qcStatus, and update inventory
+                if (itemMaster.isInventoryItem()) {
+                    if (itemDTO.getBatchNo() == null || itemDTO.getBatchNo().isBlank()) {
+                        throw new IllegalArgumentException("Batch number is required for inventory item: " + itemDTO.getItemCode());
+                    }
+
+                    if (materialReceiptItemRepository.existsByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(
+                            itemDTO.getBatchNo(), companyId, branchId)) {
+                        throw new RuntimeException("Batch number already exists. Please regenerate and try again.");
+                    }
+                    if (itemDTO.getWarehouseId() == null) {
+                        throw new IllegalArgumentException("Warehouse is required for inventory item: " + itemDTO.getItemCode());
+                    }
+
+                    Warehouse warehouse = warehouseRepository.findById(itemDTO.getWarehouseId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found"));
+
+                    itemBuilder
+                            .batchNo(itemDTO.getBatchNo())
+                            .warehouse(warehouse)
+                            .qcStatus(itemMaster.isIqc() ? "PENDING" : "PASS");
+
+                    // Update InventoryStock
+                    InventoryStock stock = inventoryStockRepository
+                            .findByItemCodeAndWarehouse(itemDTO.getItemCode(), warehouse)
+                            .orElseGet(() -> InventoryStock.builder()
+                                    .itemCode(itemDTO.getItemCode())
+                                    .itemName(itemMaster.getName())
+                                    .warehouse(warehouse)
+                                    .companyId(companyId)
+                                    .branchId(branchId)
+                                    .quantity(0)
+                                    .build());
+
+                    stock.setQuantity(stock.getQuantity() + itemDTO.getQuantity());
+                    inventoryStockRepository.save(stock);
+                    stockTransactionLogService.logTransaction(
+                            itemDTO.getItemCode(),
+                            itemMaster.getName(),
+                            itemDTO.getQuantity(),
+                            "INCREASE",
+                            "MaterialReceipt",
+                            null,
+                            companyId,
+                            branchId,
+                            warehouse,
+                            "Added via Material Receipt"
+                    );
+                } else {
+                    // ❌ Non-inventory item: no batch, no warehouse, no qcStatus
+                    itemBuilder
+                            .batchNo(null)
+                            .warehouse(null)
+                            .qcStatus(null);
+                }
+
+                items.add(itemBuilder.build());
             }
 
-            MaterialReceipt saved = receiptRepo.save(toEntity(dto, companyId, branchId));
+            receipt.setItems(items);
+            MaterialReceipt saved = receiptRepo.save(receipt);
 
-            logService.log("CREATE", "MaterialReceipt", saved.getId(), "Created receipt for vendor " + saved.getVendor());
+            logService.log("CREATE", "MaterialReceipt", saved.getId(),
+                    "Created Material Receipt for vendor " + saved.getVendor());
 
             return new ApiResponse<>(true, "Material Receipt saved successfully", toDTO(saved));
+
         } catch (DataIntegrityViolationException e) {
-            log.error("Error saving receipt - duplicate batch number: {}", e.getMessage());
+            log.error("Data integrity error: {}", e.getMessage());
             throw new RuntimeException("Batch number already exists. Please regenerate and try again.");
         } catch (Exception e) {
-            log.error("Unexpected error while saving material receipt", e);
-            throw new RuntimeException("An error occurred while saving receipt: " + e.getMessage());
+            log.error("Error while saving Material Receipt", e);
+            throw new RuntimeException("Failed to save Material Receipt");
         }
     }
 
@@ -130,18 +211,34 @@ public class MaterialReceiptService {
 
     @Transactional
     public String generateBatchNumber(String vendorCode, String itemCode, String quantity, Long companyId, Long branchId) {
-        String prefix = "M" + vendorCode + itemCode + quantity +
-                LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy"));
+        Item item = itemRepository.findByCodeAndCompanyIdAndBranchId(itemCode, companyId, branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found: " + itemCode));
 
-        String last = receiptRepo.findMaxBatchNoWithPrefix(prefix, companyId, branchId);
-        int next = 1;
-        if (last != null && last.length() >= prefix.length() + 5) {
-            try {
-                next = Integer.parseInt(last.substring(prefix.length())) + 1;
-            } catch (NumberFormatException ignored) {
-            }
+        if (!item.isInventoryItem()) {
+            // Non-inventory → no batch number required, return blank string to keep frontend happy
+            return "";
         }
-        return prefix + String.format("%05d", next);
+
+        String prefix = "M" + vendorCode + itemCode + quantity
+                +LocalDate.now().format(DateTimeFormatter.ofPattern("ddMMyyyy"));
+
+        BatchSequenceTracker tracker = batchSequenceTrackerRepository
+                .findByBatchPrefixAndCompanyIdAndBranchId(prefix, companyId, branchId)
+                .orElse(null);
+
+        if (tracker == null) {
+            tracker = new BatchSequenceTracker();
+            tracker.setBatchPrefix(prefix);
+            tracker.setLastSequence(0);
+            tracker.setCompanyId(companyId);
+            tracker.setBranchId(branchId);
+        }
+
+        int nextSequence = tracker.getLastSequence() + 1;
+        tracker.setLastSequence(nextSequence);
+        tracker = batchSequenceTrackerRepository.save(tracker);
+
+        return prefix + String.format("%05d", nextSequence);
     }
 
     public ApiResponse<MaterialReceiptItemDTO> verifyBatchAndFetchDetails(
