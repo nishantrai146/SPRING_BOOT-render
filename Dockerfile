@@ -2,12 +2,10 @@
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
 
-# Copy pom.xml and download dependencies
-COPY pom.xml .
+COPY IMS_BACKEND/pom.xml .
 RUN mvn dependency:go-offline
 
-# Copy the rest of the project and build
-COPY . .
+COPY IMS_BACKEND/. .
 RUN mvn clean package -DskipTests
 
 # Stage 2: Run
