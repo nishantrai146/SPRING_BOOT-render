@@ -92,7 +92,7 @@ public class WarehouseService {
         return toDTO(saved);
     }
 
-    // ✅ Get All
+    @Transactional
     public List<WarehouseDTO> getAllWarehouses(Long companyId, Long branchId) {
         return warehouseRepository.findAllByCompanyIdAndBranchId(companyId, branchId)
                 .stream()
@@ -100,14 +100,13 @@ public class WarehouseService {
                 .collect(Collectors.toList());
     }
 
-    // ✅ Get By ID
+    @Transactional
     public WarehouseDTO getWarehouseById(Long id, Long companyId, Long branchId) {
         Warehouse warehouse = warehouseRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
                 .orElseThrow(() -> new IllegalArgumentException("Warehouse not found with ID: " + id));
         return toDTO(warehouse);
     }
 
-    // ✅ Delete
     @Transactional
     public void deleteWarehouse(Long id, Long companyId, Long branchId) {
         Warehouse warehouse = warehouseRepository.findByIdAndCompanyIdAndBranchId(id, companyId, branchId)
@@ -124,10 +123,12 @@ public class WarehouseService {
     }
 
     @Transactional
-    public List<WarehouseDTO> getStoreAndIqcWarehuse(Long companyId,Long branchId){
+    public List<WarehouseDTO> getStoreAndIqcWarehouse(Long companyId,Long branchId){
         List<Warehouse> warehouses=warehouseRepository.findByTypeInAndCompanyIdAndBranchId(List.of(WarehouseType.STR,WarehouseType.IQC),companyId,branchId);
         return warehouses.stream().map(this::toDTO).toList();
     }
+
+    @Transactional
     public List<WarehouseDTO> getStoreAndRejWarehouse(Long companyId,Long branchId ){
         List<Warehouse> warehouses=warehouseRepository.findByTypeInAndCompanyIdAndBranchId(List.of(WarehouseType.STR,WarehouseType.REJ),companyId,branchId);
         return warehouses.stream().map(this::toDTO).toList();

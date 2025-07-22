@@ -86,17 +86,18 @@ public class WarehouseController {
     @GetMapping("/store-and-iqc")
     public ResponseEntity<ApiResponse<List<WarehouseDTO>>> getStoreAndIqcWarehouse(
             @RequestAttribute Long companyId,
-            @RequestAttribute Long branchId){
-        List<WarehouseDTO> dtos=warehouseService.getStoreAndIqcWarehuse(companyId,branchId);
-        return ResponseEntity.ok(new ApiResponse<>(true,"Warehouses",dtos));
+            @RequestAttribute Long branchId) {
+        List<WarehouseDTO> dtos = warehouseService.getStoreAndIqcWarehouse(companyId, branchId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Warehouses", dtos));
     }
+
     @GetMapping("/store-and-rej")
     public ResponseEntity<ApiResponse<List<WarehouseDTO>>> getStoreAndRej(
             @RequestAttribute Long companyId,
             @RequestAttribute Long branchId
-    ){
-        List<WarehouseDTO> dtos=warehouseService.getStoreAndRejWarehouse(companyId,branchId);
-        return ResponseEntity.ok(new ApiResponse<>(true,"Warehouses",dtos));
+    ) {
+        List<WarehouseDTO> dtos = warehouseService.getStoreAndRejWarehouse(companyId, branchId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Warehouses", dtos));
     }
 
 }
