@@ -5,7 +5,6 @@ WORKDIR /app
 
 COPY . .
 
-RUN mvn clean package -DskipTests
 
 # -------- Runtime stage --------
 FROM openjdk:17-jdk-slim
