@@ -1,14 +1,19 @@
-# Use a lightweight Java image
-FROM openjdk:17-jdk-slim
+# -------- Build stage --------
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy jar file into the container
-COPY target/ims-0.0.1-SNAPSHOT.jar app.jar
+COPY . .
 
-# Expose port (if needed internally)
+RUN mvn clean package -DskipTests
+
+# -------- Runtime stage --------
+FROM openjdk:17-jdk-slim
+
+WORKDIR /app
+
+COPY --from=builder /app/target/ims-0.0.1-SNAPSHOT.jar app.jar
+
 EXPOSE 8080
 
-# Run the jar file
 ENTRYPOINT ["java", "-jar", "app.jar"]
