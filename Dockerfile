@@ -1,14 +1,14 @@
-# Use a lightweight Java image
-FROM openjdk:17-jdk-slim
+# Use JRE instead of JDK if you don't need compilation tools
+FROM openjdk:17-jre-slim
 
-# Set working directory
 WORKDIR /app
 
-# Copy jar file into the container
-COPY target/ims-0.0.1-SNAPSHOT.jar app.jar
+# Better to copy with consistent name
+COPY target/*.jar app.jar
 
-# Expose port (if needed internally)
-EXPOSE 8080
-
-# Run the jar file
+# Add JVM options if needed (memory, GC, etc)
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Healthcheck (optional but recommended)
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD curl -f http://localhost:8080/actuator/health || exit 1
