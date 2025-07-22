@@ -4,6 +4,7 @@ import com.lit.ims.entity.InventoryStock;
 import com.lit.ims.entity.Warehouse;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface InventoryStockRepository extends JpaRepository<InventoryStock, Long> {
@@ -11,4 +12,5 @@ public interface InventoryStockRepository extends JpaRepository<InventoryStock, 
     Optional<InventoryStock> findByItemCodeAndWarehouseIdAndCompanyIdAndBranchId(
             String itemCode, Long warehouseId, Long companyId, Long branchId
     );
+    List<InventoryStock> findByWarehouseIdAndCompanyIdAndBranchId(Long warehouseId,Long companyId,Long branchId);
 }

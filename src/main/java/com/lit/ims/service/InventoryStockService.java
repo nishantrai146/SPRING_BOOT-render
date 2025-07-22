@@ -1,12 +1,13 @@
 package com.lit.ims.service;
 
+import com.lit.ims.dto.InventoryStockDTO;
 import com.lit.ims.entity.InventoryStock;
 import com.lit.ims.entity.Warehouse;
 import com.lit.ims.repository.InventoryStockRepository;
 import com.lit.ims.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -47,4 +48,19 @@ public class InventoryStockService {
         stock.setQuantity(stock.getQuantity() - quantity);
         inventoryStockRepository.save(stock);
     }
+
+    public List<InventoryStockDTO> getItemsByWarehouse(Long warehouseId, Long companyId, Long branchId) {
+        List<InventoryStock> stockList = inventoryStockRepository
+                .findByWarehouseIdAndCompanyIdAndBranchId(warehouseId, companyId, branchId);
+
+        return stockList.stream().map(stock -> InventoryStockDTO.builder()
+                .itemCode(stock.getItemCode())
+                .itemName(stock.getItemName())
+                .quantity(stock.getQuantity())
+                .warehouseId(stock.getWarehouse().getId())
+                .warehouseName(stock.getWarehouse().getName())
+                .build()
+        ).toList();
+    }
+
 }
