@@ -418,7 +418,7 @@ public class MaterialReceiptService {
         );
     }
 
-    public ApiResponse<PendingQcItemsDTO> getitemByBatchNo(String batchNo, Long companyId, Long branchId) {
+    public ApiResponse<PendingQcItemsDTO> getItemByBatchNo(String batchNo, Long companyId, Long branchId) {
         MaterialReceiptItem item = materialReceiptItemRepository.findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(batchNo, companyId, branchId)
                 .orElseThrow(() -> new RuntimeException("Item not found for batch number" + batchNo));
 
