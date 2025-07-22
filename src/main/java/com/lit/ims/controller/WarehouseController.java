@@ -99,5 +99,13 @@ public class WarehouseController {
         List<WarehouseDTO> dtos = warehouseService.getStoreAndRejWarehouse(companyId, branchId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Warehouses", dtos));
     }
+    @GetMapping("/wip")
+    public  ResponseEntity<ApiResponse<List<WarehouseDTO>>> getWip(
+            @RequestAttribute Long companyId,
+            @RequestAttribute Long branchId
+    ){
+        List<WarehouseDTO> dto=warehouseService.getWip(companyId,branchId);
+        return ResponseEntity.ok(new ApiResponse<>(true,"Warehouses",dto));
+    }
 
 }

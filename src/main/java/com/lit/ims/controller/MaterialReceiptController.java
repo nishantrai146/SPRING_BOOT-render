@@ -83,7 +83,7 @@
                 @RequestAttribute Long companyId,
                 @RequestAttribute Long branchId
         ) {
-            ApiResponse<PendingQcItemsDTO> response = receiptService.getitemByBatchNo(batchNo, companyId, branchId);
+            ApiResponse<PendingQcItemsDTO> response = receiptService.getItemByBatchNo(batchNo, companyId, branchId);
             return ResponseEntity.ok(response);
         }
         @DeleteMapping("/delete-pending/{id}")

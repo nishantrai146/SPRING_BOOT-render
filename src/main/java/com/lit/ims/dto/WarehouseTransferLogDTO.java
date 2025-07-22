@@ -1,22 +1,11 @@
-package com.lit.ims.entity;
+package com.lit.ims.dto;
 
-import jakarta.persistence.*;
-import lombok.*;
+import lombok.Data;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "warehouse_transfer_log")
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class WarehouseTransferLog {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    @Column(name = "tr_no", unique = true, nullable = false)
+public class WarehouseTransferLogDTO {
     private String trNo;
     private String itemCode;
     private String itemName;
@@ -31,9 +20,6 @@ public class WarehouseTransferLog {
     private String transferType;
     private String referenceType;
     private Long referenceId;
-
-    private Long companyId;
-    private Long branchId;
 
     private String transferredBy;
     private LocalDateTime transferredAt;
