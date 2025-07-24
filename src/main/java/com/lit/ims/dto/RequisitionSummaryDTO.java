@@ -16,6 +16,7 @@ public class RequisitionSummaryDTO {
     private String status;
     @JsonFormat(pattern = "dd-MM-yyyy hh:mm:ss a")
     private LocalDateTime createdAt;
+    private Long warehouseId;
 
     private List<RequestedItemDTO> items;
 }

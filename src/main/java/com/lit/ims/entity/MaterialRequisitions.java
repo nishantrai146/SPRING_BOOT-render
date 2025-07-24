@@ -28,6 +28,9 @@ public class MaterialRequisitions {
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+    @ManyToOne
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
 
     @PrePersist
     protected void onCreate() {

@@ -8,5 +8,6 @@ import java.util.List;
 public class MaterialRequisitionDTO {
     private String type;
     private String transactionNumber;
+    private Long warehouseId;
     private List<RequestedItemDTO> items;
 }
