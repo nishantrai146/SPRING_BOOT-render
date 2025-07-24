@@ -32,4 +32,6 @@ public interface MaterialReceiptItemRepository extends JpaRepository<MaterialRec
 
 
 
+
+
 }
