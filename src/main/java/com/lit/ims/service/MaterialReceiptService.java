@@ -356,18 +356,20 @@ public class MaterialReceiptService {
             throw new RuntimeException("Access denied for company/branch");
         }
 
-        // Set IQC status
-        item.setQcStatus(dto.getQcStatus());
-        item.setDefectCategory(dto.getDefectCategory());
-        item.setRemarks(dto.getRemarks());
-        materialReceiptItemRepository.save(item);
-
-        // From IQC to Store or Reject
+        // ➤ Get source (IQC) warehouse before updating the item
         Warehouse iqcWarehouse = warehouseRepository.findById(item.getWarehouse().getId())
                 .orElseThrow(() -> new RuntimeException("IQC warehouse not found"));
 
+        // ➤ Get target warehouse from DTO
         Warehouse targetWarehouse = warehouseRepository.findById(dto.getWarehouseId())
                 .orElseThrow(() -> new RuntimeException("Target warehouse not found"));
+
+        // ➤ Set IQC status and update item details
+        item.setQcStatus(dto.getQcStatus());
+        item.setDefectCategory(dto.getDefectCategory());
+        item.setRemarks(dto.getRemarks());
+        item.setWarehouse(targetWarehouse); // ✅ Set new warehouse after QC pass/reject
+        materialReceiptItemRepository.save(item);
 
         Integer quantity = item.getQuantity();
         String itemCode = item.getItemCode();
@@ -395,7 +397,7 @@ public class MaterialReceiptService {
         // ➤ Log Warehouse Transfer
         warehouseTransferLogService.logTransfer(
                 itemCode,
-                itemName,  // ✅ Add this
+                itemName,
                 quantity,
                 iqcWarehouse.getId(),
                 iqcWarehouse.getName(),

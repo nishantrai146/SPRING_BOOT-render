@@ -19,6 +19,7 @@ public class IssueProductionDTO {
     private LocalDateTime issueDate;
 
     private String createdBy;
+    private Long destinationWarehouseId;
 
     private List<IssuedBatchItemDTO> batchItems;
 }

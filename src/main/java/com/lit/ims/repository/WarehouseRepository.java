@@ -20,4 +20,5 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     Optional<Warehouse> findByIdAndCompanyIdAndBranchId(Long id, Long companyId, Long branchId);
 
     List<Warehouse> findByTypeInAndCompanyIdAndBranchId(List<WarehouseType> types,Long companyId,Long branchID);
+    Optional<Warehouse> findByTypeAndCompanyIdAndBranchId(WarehouseType type, Long companyId, Long branchId);
 }

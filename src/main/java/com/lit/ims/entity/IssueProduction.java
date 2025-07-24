@@ -45,4 +45,10 @@ public class IssueProduction {
 
     @Column
     private String type;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
+
+
 }
