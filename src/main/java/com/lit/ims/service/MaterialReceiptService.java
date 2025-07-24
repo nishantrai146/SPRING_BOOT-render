@@ -280,6 +280,10 @@ public class MaterialReceiptService {
                         "Item Code " + itemCode + " not found under Vendor " + vendorCode, null);
             }
 
+            Optional<Item> optionalItem = itemRepository.findByCodeAndCompanyIdAndBranchId(itemCode, companyId, branchId);
+            boolean isInventory = optionalItem.map(Item::isInventoryItem).orElse(false);
+            boolean isIqc = optionalItem.map(Item::isIqc).orElse(false);
+
             /* 5. Build DTO straight from VendorItemsMaster */
             MaterialReceiptItemDTO dto = MaterialReceiptItemDTO.builder()
                     .batchNo(batchNo)
@@ -287,7 +291,9 @@ public class MaterialReceiptService {
                     .vendorName(master.getVendorName())           // assumes column exists
                     .itemCode(master.getItemCode())
                     .itemName(master.getItemName())
-                    .quantity(master.getQuantity())               // or getStockQty(), etc.
+                    .quantity(master.getQuantity())
+                    .isInventory(isInventory)
+                    .isIqc(isIqc)
                     .build();
 
             return new ApiResponse<>(true, "Batch verified", dto);
