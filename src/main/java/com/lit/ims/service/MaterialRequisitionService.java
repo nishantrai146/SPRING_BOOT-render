@@ -1,17 +1,13 @@
 package com.lit.ims.service;
 
-import com.lit.ims.dto.ItemMasterDTO;
-import com.lit.ims.dto.MaterialRequisitionDTO;
-import com.lit.ims.dto.RequestedItemDTO;
-import com.lit.ims.dto.RequisitionSummaryDTO;
+import com.lit.ims.dto.*;
 import com.lit.ims.entity.*;
-import com.lit.ims.repository.BomItemRepository;
-import com.lit.ims.repository.BomRepository;
-import com.lit.ims.repository.ItemRepository;
-import com.lit.ims.repository.MaterialRequisitionRepository;
+import com.lit.ims.exception.DuplicateResourceException;
+import com.lit.ims.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,14 +22,24 @@ public class MaterialRequisitionService {
     private final ItemRepository itemRepository;
     private final BomRepository bomRepository;
     private final BomItemRepository bomItemRepository;
+    private final WarehouseRepository warehouseRepository;
 
+
+    @Transactional
     public MaterialRequisitions save(MaterialRequisitionDTO dto, Long companyId, Long branchId) {
+        if(repository.existsByTransactionNumberAndCompanyIdAndBranchId(dto.getTransactionNumber(),companyId,branchId)){
+            throw new DuplicateResourceException("Transaction Number Already exits.");
+        }
+        Warehouse warehouse = warehouseRepository.findById(dto.getWarehouseId())
+                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+
         MaterialRequisitions requisitions = MaterialRequisitions.builder()
                 .transactionNumber(dto.getTransactionNumber())
                 .type(dto.getType())
                 .companyId(companyId)
                 .branchId(branchId)
                 .status(RequisitionStatus.PENDING)
+                .warehouse(warehouse)
                 .items(new ArrayList<>())
                 .build();
 
@@ -123,12 +129,15 @@ public class MaterialRequisitionService {
         }).toList();
     }
 
-    public List<ItemMasterDTO> getFullItemsByTransactionNumber(String transactionNumber, Long companyId, Long branchId) {
+    public List<GroupedItemGroupDTO> getFullItemsByTransactionNumber(String transactionNumber, Long companyId, Long branchId) {
         MaterialRequisitions requisition = repository
                 .findByTransactionNumberAndCompanyIdAndBranchId(transactionNumber, companyId, branchId)
                 .orElseThrow(() -> new RuntimeException("Requisition not found"));
 
-        List<ItemMasterDTO> finalItems = new ArrayList<>();
+        List<GroupedItemGroupDTO> groupedItems = new ArrayList<>();
+
+        // Handle individual items
+        List<GroupedItemDTO> individualItems = new ArrayList<>();
 
         for (MaterialRequisitionItem item : requisition.getItems()) {
             int requestedQty = item.getQuantity();
@@ -136,7 +145,7 @@ public class MaterialRequisitionService {
             if ("item".equalsIgnoreCase(item.getType())) {
                 Item itemMaster = itemRepository.findByCode(item.getCode()).orElse(null);
 
-                finalItems.add(ItemMasterDTO.builder()
+                individualItems.add(GroupedItemDTO.builder()
                         .code(item.getCode())
                         .name(itemMaster != null ? itemMaster.getName() : item.getName())
                         .uom(itemMaster != null ? itemMaster.getUom() : null)
@@ -144,18 +153,36 @@ public class MaterialRequisitionService {
                         .quantityRequested(requestedQty)
                         .stQuantity(itemMaster != null ? itemMaster.getStQty() : 0)
                         .build());
+            }
+        }
 
-            } else if ("bom".equalsIgnoreCase(item.getType())) {
+        if (!individualItems.isEmpty()) {
+            groupedItems.add(GroupedItemGroupDTO.builder()
+                    .type("item")
+                    .parentBomCode(null)
+                    .parentBomName(null)
+                    .items(individualItems)
+                    .build());
+        }
+
+        // Handle BOMs
+        for (MaterialRequisitionItem item : requisition.getItems()) {
+            if ("bom".equalsIgnoreCase(item.getType())) {
+                int requestedQty = item.getQuantity();
                 BOM bom = bomRepository.findByCode(item.getCode())
                         .orElseThrow(() -> new RuntimeException("BOM not found"));
 
                 List<BomItem> bomItems = bomItemRepository.findByBom(bom);
+                List<GroupedItemDTO> bomItemList = new ArrayList<>();
 
                 for (BomItem bomItem : bomItems) {
                     Item bomItemMaster = itemRepository.findByCode(bomItem.getItemCode()).orElse(null);
-                    int totalQty = (int) (bomItem.getQuantity() * requestedQty);
 
-                    finalItems.add(ItemMasterDTO.builder()
+                    Double bomItemQty = bomItem.getQuantity();
+                    int qtyPerUnit = bomItemQty != null ? bomItemQty.intValue() : 0;
+                    int totalQty = qtyPerUnit * requestedQty;
+
+                    bomItemList.add(GroupedItemDTO.builder()
                             .code(bomItem.getItemCode())
                             .name(bomItemMaster != null ? bomItemMaster.getName() : bomItem.getItemName())
                             .uom(bomItemMaster != null ? bomItemMaster.getUom() : bomItem.getUom())
@@ -164,9 +191,20 @@ public class MaterialRequisitionService {
                             .stQuantity(bomItemMaster != null ? bomItemMaster.getStQty() : 0)
                             .build());
                 }
+
+                if (!bomItemList.isEmpty()) {
+                    groupedItems.add(GroupedItemGroupDTO.builder()
+                            .type("bom")
+                            .parentBomCode(bom.getCode())
+                            .parentBomName(bom.getName())
+                            .items(bomItemList)
+                            .build());
+                }
             }
         }
 
-        return finalItems;
+        return groupedItems;
     }
+
+
 }

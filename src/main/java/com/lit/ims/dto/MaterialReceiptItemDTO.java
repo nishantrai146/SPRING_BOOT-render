@@ -18,4 +18,7 @@ public class MaterialReceiptItemDTO {
     private String batchNo;
     private boolean isIssued;
     private Long warehouseId;
+    private Boolean isInventory;
+    private Boolean isIqc;
+
 }

@@ -13,6 +13,6 @@ public interface MaterialRequisitionRepository extends JpaRepository<MaterialReq
     List<MaterialRequisitions> findTop10ByCompanyIdAndBranchIdOrderByCreatedAtDesc(Long companyId, Long branchId);
     List<MaterialRequisitions> findByCompanyIdAndBranchIdAndStatus(Long companyId, Long branchId, RequisitionStatus status);
     Optional<MaterialRequisitions> findByTransactionNumberAndCompanyIdAndBranchId(String transactionNumber, Long companyId, Long branchId);
-
+    boolean existsByTransactionNumberAndCompanyIdAndBranchId(String transactionNumber, Long companyId, Long branchId);
 }
 

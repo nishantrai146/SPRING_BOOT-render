@@ -1,9 +1,6 @@
 package com.lit.ims.controller;
 
-import com.lit.ims.dto.ItemMasterDTO;
-import com.lit.ims.dto.MaterialRequisitionDTO;
-import com.lit.ims.dto.RequestedItemDTO;
-import com.lit.ims.dto.RequisitionSummaryDTO;
+import com.lit.ims.dto.*;
 import com.lit.ims.entity.MaterialRequisitions;
 import com.lit.ims.response.ApiResponse;
 import com.lit.ims.service.MaterialRequisitionService;
@@ -57,12 +54,12 @@ public class MaterialRequisitionController {
     }
 
     @GetMapping("/{transactionNumber}/items/full")
-    public ResponseEntity<ApiResponse<List<ItemMasterDTO>>> getFullItemDetailsByTransactionNumber(
+    public ResponseEntity<ApiResponse<List<GroupedItemGroupDTO>>> getFullItemDetailsByTransactionNumber(
             @PathVariable String transactionNumber,
             @RequestAttribute Long companyId,
             @RequestAttribute Long branchId
     ) {
-        List<ItemMasterDTO> items = service.getFullItemsByTransactionNumber(transactionNumber, companyId, branchId);
+        List<GroupedItemGroupDTO> items = service.getFullItemsByTransactionNumber(transactionNumber, companyId, branchId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Fetched full item details", items));
     }
 
