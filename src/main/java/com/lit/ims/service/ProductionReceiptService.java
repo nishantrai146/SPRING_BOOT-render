@@ -1,9 +1,7 @@
 package com.lit.ims.service;
 
 
-import com.lit.ims.dto.ConfirmReceiptDTO;
-import com.lit.ims.dto.ItemCodeNameDTO;
-import com.lit.ims.dto.ProductionReceiptTableDTO;
+import com.lit.ims.dto.*;
 import com.lit.ims.entity.*;
 import com.lit.ims.repository.IssuedBatchItemsRepository;
 import com.lit.ims.repository.ProductionReceiptRepository;
@@ -136,5 +134,37 @@ public class ProductionReceiptService {
                 })
                 .toList();
     }
+
+    @Transactional(readOnly = true)
+    public List<ReceiptIdNumberDTO> getAllReceiptIdAndNumbers(Long companyId, Long branchId) {
+        return receiptRepo.findByCompanyIdAndBranchIdOrderByReceiptDateDesc(companyId, branchId)
+                .stream()
+                .map(r -> new ReceiptIdNumberDTO(r.getId(), r.getTransactionNumber()))
+                .toList();
+    }
+    @Transactional(readOnly = true)
+    public List<ProductionReceiptItemDTO> getReceiptItemsById(Long receiptId, Long companyId, Long branchId) {
+        ProductionReceipt receipt = receiptRepo.findById(receiptId)
+                .orElseThrow(() -> new IllegalArgumentException("Receipt not found: " + receiptId));
+
+        // Optional: Check access for company/branch
+        if (!receipt.getCompanyId().equals(companyId) || !receipt.getBranchId().equals(branchId)) {
+            throw new RuntimeException("Access denied for receipt ID: " + receiptId);
+        }
+
+        return receipt.getItems().stream()
+                .map(item -> new ProductionReceiptItemDTO(
+                        item.getItemCode(),
+                        item.getItemName(),
+                        item.getBatchNumber(),
+                        item.getIssuedQuantity(),
+                        item.getReceivedQuantity(),
+                        item.getVariance(),
+                        item.getNote()
+                ))
+                .toList();
+    }
+
+
 
 }
