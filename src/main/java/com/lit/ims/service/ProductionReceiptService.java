@@ -4,6 +4,7 @@ package com.lit.ims.service;
 import com.lit.ims.dto.ConfirmReceiptDTO;
 import com.lit.ims.dto.ItemCodeNameDTO;
 import com.lit.ims.dto.ProductionReceiptTableDTO;
+import com.lit.ims.dto.ReceiptIdNumberDTO;
 import com.lit.ims.entity.*;
 import com.lit.ims.repository.IssuedBatchItemsRepository;
 import com.lit.ims.repository.ProductionReceiptRepository;
@@ -136,5 +137,14 @@ public class ProductionReceiptService {
                 })
                 .toList();
     }
+
+    @Transactional(readOnly = true)
+    public List<ReceiptIdNumberDTO> getAllReceiptIdAndNumbers(Long companyId, Long branchId) {
+        return receiptRepo.findByCompanyIdAndBranchIdOrderByReceiptDateDesc(companyId, branchId)
+                .stream()
+                .map(r -> new ReceiptIdNumberDTO(r.getId(), r.getTransactionNumber()))
+                .toList();
+    }
+
 
 }
