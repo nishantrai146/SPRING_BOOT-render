@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -57,8 +58,46 @@ public class IssueProductionService {
         IssueProduction savedIssue = issueProductionRepository.save(issue);
 
         // 3. Update requisition status
-        requisition.setStatus(RequisitionStatus.APPROVED);
+        Map<String, Double> issuedQtyMap = batchItems.stream()
+                .collect(Collectors.groupingBy(
+                        IssuedBatchItems::getItemCode,
+                        Collectors.summingDouble(batch -> batch.getIssuedQty() != null ? batch.getIssuedQty() : 0.0)
+                ));
+
+        boolean allFullyIssued = true;
+        boolean anyIssued = false;
+
+        for (MaterialRequisitionItem item : requisition.getItems()) {
+            String itemCode = item.getCode();
+            int requestedQty = item.getQuantity() != null ? item.getQuantity() : 0;
+            double totalIssuedQty = issuedQtyMap.getOrDefault(itemCode, 0.0);
+
+            // If already issued, don’t touch it. If not, check if it’s now fully issued.
+            if (!Boolean.TRUE.equals(item.getIsIssued()) && totalIssuedQty >= requestedQty) {
+                item.setIsIssued(true); // ✅ update only if going from false to true
+            }
+
+            if (item.getIsIssued() != null && item.getIsIssued()) {
+                // This item is already fully issued
+            } else if (totalIssuedQty > 0) {
+                anyIssued = true;
+                allFullyIssued = false;
+            } else {
+                allFullyIssued = false;
+            }
+        }
+
+        if (allFullyIssued) {
+            requisition.setStatus(RequisitionStatus.APPROVED);
+        } else if (anyIssued) {
+            requisition.setStatus(RequisitionStatus.PARTIALLY_ISSUED);
+        } else {
+            requisition.setStatus(RequisitionStatus.PENDING);
+        }
+
         materialRequisitionRepository.save(requisition);
+//        requisition.setStatus(RequisitionStatus.APPROVED);
+//        materialRequisitionRepository.save(requisition);
 
         // 4. Get Store warehouse (from where we issue)
         Warehouse storeWarehouse = warehouseRepository.findByTypeAndCompanyIdAndBranchId(WarehouseType.STR, companyId, branchId)

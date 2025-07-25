@@ -108,26 +108,27 @@ public class MaterialRequisitionService {
     }
 
     public List<String> getAllTransactionNumber(Long companyId, Long branchId) {
-        return repository.findByCompanyIdAndBranchIdAndStatus(companyId, branchId, RequisitionStatus.PENDING)
+        return repository.findByCompanyIdAndBranchIdAndStatusIn(companyId, branchId, List.of(RequisitionStatus.PARTIALLY_ISSUED,RequisitionStatus.PENDING))
+
                 .stream()
                 .map(MaterialRequisitions::getTransactionNumber)
                 .toList();
     }
 
-    public List<RequestedItemDTO> getItemsByTransactionNumber(String transactionNumber, Long companyId, Long branchId) {
-        MaterialRequisitions requisition = repository
-                .findByTransactionNumberAndCompanyIdAndBranchId(transactionNumber, companyId, branchId)
-                .orElseThrow(() -> new RuntimeException("Requisition not found"));
-
-        return requisition.getItems().stream().map(item -> {
-            RequestedItemDTO dto = new RequestedItemDTO();
-            dto.setName(item.getName());
-            dto.setCode(item.getCode());
-            dto.setType(item.getType());
-            dto.setQuantity(item.getQuantity());
-            return dto;
-        }).toList();
-    }
+//    public List<RequestedItemDTO> getItemsByTransactionNumber(String transactionNumber, Long companyId, Long branchId) {
+//        MaterialRequisitions requisition = repository
+//                .findByTransactionNumberAndCompanyIdAndBranchId(transactionNumber, companyId, branchId)
+//                .orElseThrow(() -> new RuntimeException("Requisition not found"));
+//
+//        return requisition.getItems().stream().map(item -> {
+//            RequestedItemDTO dto = new RequestedItemDTO();
+//            dto.setName(item.getName());
+//            dto.setCode(item.getCode());
+//            dto.setType(item.getType());
+//            dto.setQuantity(item.getQuantity());
+//            return dto;
+//        }).toList();
+//    }
 
     public List<GroupedItemGroupDTO> getFullItemsByTransactionNumber(String transactionNumber, Long companyId, Long branchId) {
         MaterialRequisitions requisition = repository
@@ -140,6 +141,8 @@ public class MaterialRequisitionService {
         List<GroupedItemDTO> individualItems = new ArrayList<>();
 
         for (MaterialRequisitionItem item : requisition.getItems()) {
+            if (item.getIsIssued()) continue; // ✅ skip already issued items
+
             int requestedQty = item.getQuantity();
 
             if ("item".equalsIgnoreCase(item.getType())) {
@@ -167,6 +170,8 @@ public class MaterialRequisitionService {
 
         // Handle BOMs
         for (MaterialRequisitionItem item : requisition.getItems()) {
+            if (item.getIsIssued()) continue; // ✅ skip already issued BOMs
+
             if ("bom".equalsIgnoreCase(item.getType())) {
                 int requestedQty = item.getQuantity();
                 BOM bom = bomRepository.findByCode(item.getCode())
