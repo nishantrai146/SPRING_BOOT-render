@@ -23,7 +23,7 @@ public class MaterialRequisitions {
     private String type;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false,length = 20)
     private RequisitionStatus status;
 
     @Column(nullable = false, updatable = false)

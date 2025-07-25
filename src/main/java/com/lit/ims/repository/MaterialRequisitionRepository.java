@@ -11,7 +11,7 @@ import java.util.Optional;
 @Repository
 public interface MaterialRequisitionRepository extends JpaRepository<MaterialRequisitions, Long> {
     List<MaterialRequisitions> findTop10ByCompanyIdAndBranchIdOrderByCreatedAtDesc(Long companyId, Long branchId);
-    List<MaterialRequisitions> findByCompanyIdAndBranchIdAndStatus(Long companyId, Long branchId, RequisitionStatus status);
+    List<MaterialRequisitions> findByCompanyIdAndBranchIdAndStatusIn(Long companyId, Long branchId, List<RequisitionStatus> statuses);
     Optional<MaterialRequisitions> findByTransactionNumberAndCompanyIdAndBranchId(String transactionNumber, Long companyId, Long branchId);
     boolean existsByTransactionNumberAndCompanyIdAndBranchId(String transactionNumber, Long companyId, Long branchId);
 }
