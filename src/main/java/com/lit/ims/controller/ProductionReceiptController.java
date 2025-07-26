@@ -4,7 +4,6 @@ import com.lit.ims.dto.ConfirmReceiptDTO;
 import com.lit.ims.dto.ProductionReceiptItemDTO;
 import com.lit.ims.dto.ProductionReceiptTableDTO;
 import com.lit.ims.dto.ReceiptIdNumberDTO;
-import com.lit.ims.repository.ProductionReceiptRepository;
 import com.lit.ims.response.ApiResponse;
 import com.lit.ims.service.ProductionReceiptService;
 import lombok.RequiredArgsConstructor;
