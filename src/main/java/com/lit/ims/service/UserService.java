@@ -66,10 +66,30 @@ public class UserService {
 
             User savedOwner = userRepo.save(owner);
 
-            List<String> allPages = List.of("Vendor Master", "Vendor Item Master", "Inventory Audit Reports", "Part Master", "BOM Master",
-                    "Group Master", "Item Master", "Warehouse Master", "Material Incoming", "IQC", "Material Issue Request",
-                    "Issue to Production","Production Floor Receipt", "Production Material Usage", "WIP Return", "Inventory Reports",
-                    "Transaction Reports","Production Reports","User Management","Role Management","System Settings","Audit Logs","Approve Items Quantity");
+            List<String> allPages = List.of("Vendor Master",
+                    "Vendor Item Master",
+                    "Inventory Audit Report",
+                    "Part Master",
+                    "BOM Master",
+                    "Type Master",
+                    "Group Master",
+                    "Item Master",
+                    "Warehouse Master",
+                    "Store Material Inward",
+                    "IQC",
+                    "Material Issue Request",
+                    "Material Issue Transfer",
+                    "Material Receipt",
+                    "Production Material Usage",
+                    "WIP Return",
+                    "Inventory Report",
+                    "Transaction Report",
+                    "Production Report",
+                    "User Management",
+                    "Role Management",
+                    "System Settings",
+                    "Activity Logs",
+                    "Approve Items Quantity");
             List<PagePermission> permissions = allPages.stream().map(p -> {
                 PagePermission perm = new PagePermission();
                 perm.setPageName(p);
