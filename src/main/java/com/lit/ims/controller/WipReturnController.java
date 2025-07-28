@@ -7,6 +7,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/wip-return")
 @RequiredArgsConstructor
@@ -24,4 +27,14 @@ public class WipReturnController {
         wipReturnService.saveWipReturn(dto, companyId, branchId, username);
         return ResponseEntity.ok(new ApiResponse<>(true,"WIP Return saved successfully",null));
     }
+    @GetMapping("/recent/summary")
+    public ApiResponse<List<Map<String, Object>>> getRecentWipReturnSummary(
+            @RequestAttribute("companyId") Long companyId,
+            @RequestAttribute("branchId") Long branchId
+    ) {
+        List<Map<String, Object>> summaryList = wipReturnService.getRecentWipReturnSummary(companyId, branchId);
+        return new ApiResponse<>(true, "Recent WIP return summary", summaryList);
+    }
+
+
 }
