@@ -15,11 +15,15 @@ public class WipReturnItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long itemId;
+    private Long itemCode;
 
     private String itemName;
 
-    private String batchNo;
+    @Column(name = "original_batch_no")
+    private String originalBatchNo;
+
+    @Column(name = "new_batch_no")
+    private String newBatchNo;
 
     private Integer originalQty;
 

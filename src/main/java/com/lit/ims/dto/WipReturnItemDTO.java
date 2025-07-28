@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class WipReturnItemDTO {
-    private Long itemId;
+    private Long itemCode;
     private String itemName;
     private String batchNo;
     private Integer originalQty;
