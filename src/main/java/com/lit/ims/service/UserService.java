@@ -66,7 +66,7 @@ public class UserService {
 
             User savedOwner = userRepo.save(owner);
 
-            List<String> allPages = List.of("Vendor Master",
+            List<String> allPages = List.of("Business Partner",
                     "Vendor Item Master",
                     "Inventory Audit Report",
                     "Part Master",
