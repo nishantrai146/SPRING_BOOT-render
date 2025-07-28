@@ -37,6 +37,8 @@ public class WipReturn {
 
     private LocalDateTime createdAt;
 
+    private String receiptNumber;
+
     @OneToMany(mappedBy = "wipReturn", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WipReturnItem> returnItems;
 }

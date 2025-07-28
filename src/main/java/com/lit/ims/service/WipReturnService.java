@@ -31,6 +31,7 @@ public class WipReturnService {
                 .returnType(dto.getReturnType())
                 .returnDate(dto.getReturnDate())
                 .workOrderId(dto.getWorkOrderId())
+                .receiptNumber(dto.getReceiptNumber())
                 .warehouseId(dto.getWarehouseId())
                 .companyId(companyId)
                 .branchId(branchId)
@@ -88,6 +89,7 @@ public class WipReturnService {
             Map<String, Object> response = new HashMap<>();
             response.put("date", recent.getReturnDate());
             response.put("transactionNumber", recent.getTransactionNumber());
+            response.put("receiptNumber", recent.getReceiptNumber());
             response.put("workOrderId", recent.getWorkOrderId());
             response.put("returnType", recent.getReturnType());
 
