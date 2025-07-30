@@ -21,9 +21,10 @@ public class MaterialRequisitionController {
     public ResponseEntity<ApiResponse<String>> createRequisition(
             @RequestBody MaterialRequisitionDTO dto,
             @RequestAttribute Long companyId,
-            @RequestAttribute Long branchId
+            @RequestAttribute Long branchId,
+            @RequestAttribute String username
     ) {
-        MaterialRequisitions saved = service.save(dto, companyId, branchId);
+        MaterialRequisitions saved = service.save(dto, companyId, branchId,username);
         return ResponseEntity.ok(new ApiResponse<>(true,"Requisition saved successfully", saved.getTransactionNumber()));
     }
 

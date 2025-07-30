@@ -33,10 +33,12 @@ public class IssueProductionService {
                 .findByTransactionNumberAndCompanyIdAndBranchId(
                         dto.getRequisitionNumber(), companyId, branchId)
                 .orElseThrow(() -> new EntityNotFoundException("Requisition " + dto.getRequisitionNumber() + " not found"));
+
         Warehouse destinationWarehouse = requisition.getWarehouse();
         if (destinationWarehouse == null) {
             throw new ResourceNotFoundException("Destination warehouse not defined in requisition");
         }
+
         // 2. Build and save the IssueProduction entity
         IssueProduction issue = IssueProduction.builder()
                 .issueNumber(dto.getIssueNumber())
@@ -57,7 +59,7 @@ public class IssueProductionService {
         issue.setBatchItems(batchItems);
         IssueProduction savedIssue = issueProductionRepository.save(issue);
 
-        // 3. Update requisition status
+        // 3. Update requisition status (based on issued quantities)
         Map<String, Double> issuedQtyMap = batchItems.stream()
                 .collect(Collectors.groupingBy(
                         IssuedBatchItems::getItemCode,
@@ -72,17 +74,15 @@ public class IssueProductionService {
             int requestedQty = item.getQuantity() != null ? item.getQuantity() : 0;
             double totalIssuedQty = issuedQtyMap.getOrDefault(itemCode, 0.0);
 
-            // If already issued, don’t touch it. If not, check if it’s now fully issued.
-            if (!Boolean.TRUE.equals(item.getIsIssued()) && totalIssuedQty >= requestedQty) {
-                item.setIsIssued(true); // ✅ update only if going from false to true
-            }
-
-            if (item.getIsIssued() != null && item.getIsIssued()) {
-                // This item is already fully issued
+            if (totalIssuedQty >= requestedQty) {
+                // fully issued
+                anyIssued = true;
             } else if (totalIssuedQty > 0) {
+                // partially issued
                 anyIssued = true;
                 allFullyIssued = false;
             } else {
+                // not issued at all
                 allFullyIssued = false;
             }
         }
@@ -96,23 +96,19 @@ public class IssueProductionService {
         }
 
         materialRequisitionRepository.save(requisition);
-//        requisition.setStatus(RequisitionStatus.APPROVED);
-//        materialRequisitionRepository.save(requisition);
 
         // 4. Get Store warehouse (from where we issue)
         Warehouse storeWarehouse = warehouseRepository.findByTypeAndCompanyIdAndBranchId(WarehouseType.STR, companyId, branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store warehouse not found"));
 
-
-
-        // 6. Process each batch item
+        // 5. Process each batch item
         for (IssuedBatchItems batch : batchItems) {
 
             String itemCode = batch.getItemCode();
             String itemName = batch.getItemName();
             int qtyIssued = batch.getIssuedQty() != null ? batch.getIssuedQty().intValue() : 0;
 
-            // 6.1 Reduce inventory from store
+            // 5.1 Reduce inventory from store
             InventoryStock storeStock = inventoryStockRepository
                     .findByItemCodeAndWarehouseIdAndCompanyIdAndBranchId(itemCode, storeWarehouse.getId(), companyId, branchId)
                     .orElseThrow(() -> new ResourceNotFoundException("No inventory found for item " + itemCode));
@@ -124,7 +120,7 @@ public class IssueProductionService {
             storeStock.setQuantity(storeStock.getQuantity() - qtyIssued);
             inventoryStockRepository.save(storeStock);
 
-            // 6.2 Add inventory to destination warehouse
+            // 5.2 Add inventory to destination warehouse
             InventoryStock destinationStock = inventoryStockRepository
                     .findByItemCodeAndWarehouseIdAndCompanyIdAndBranchId(itemCode, destinationWarehouse.getId(), companyId, branchId)
                     .orElse(InventoryStock.builder()
@@ -139,7 +135,7 @@ public class IssueProductionService {
             destinationStock.setQuantity(destinationStock.getQuantity() + qtyIssued);
             inventoryStockRepository.save(destinationStock);
 
-            // 6.3 Log inventory reduction from store
+            // 5.3 Log inventory reduction from store
             stockTransactionLogService.logTransaction(
                     itemCode,
                     itemName,
@@ -153,7 +149,7 @@ public class IssueProductionService {
                     username
             );
 
-            // 6.4 Log inventory addition to destination
+            // 5.4 Log inventory addition to destination
             stockTransactionLogService.logTransaction(
                     itemCode,
                     itemName,
@@ -167,7 +163,7 @@ public class IssueProductionService {
                     username
             );
 
-            // 6.5 Log transfer between warehouses
+            // 5.5 Log transfer between warehouses
             warehouseTransferLogService.logTransfer(
                     itemCode,
                     itemName,
@@ -184,8 +180,9 @@ public class IssueProductionService {
                     username
             );
 
+            // 5.6 Update batch warehouse
             materialReceiptItemRepository
-                    .findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(batch.getBatchNo(),companyId,branchId)
+                    .findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(batch.getBatchNo(), companyId, branchId)
                     .ifPresent(receiptItem -> {
                         receiptItem.setWarehouse(destinationWarehouse);
                         materialReceiptItemRepository.save(receiptItem);

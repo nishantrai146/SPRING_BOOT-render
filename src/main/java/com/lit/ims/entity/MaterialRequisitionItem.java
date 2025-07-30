@@ -21,8 +21,6 @@ public class MaterialRequisitionItem {
     private String code;
     private String type;
     private Integer quantity;
-    @Column(name = "is_issued")
-    private Boolean isIssued = false;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requisition_id")
     private MaterialRequisitions requisition;

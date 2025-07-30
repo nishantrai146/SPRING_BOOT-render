@@ -1,7 +1,11 @@
 package com.lit.ims.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lit.ims.dto.*;
 import com.lit.ims.entity.*;
+import com.lit.ims.enums.ApprovalStatus;
+import com.lit.ims.enums.ReferenceType;
 import com.lit.ims.exception.DuplicateResourceException;
 import com.lit.ims.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -9,9 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -23,13 +26,17 @@ public class MaterialRequisitionService {
     private final BomRepository bomRepository;
     private final BomItemRepository bomItemRepository;
     private final WarehouseRepository warehouseRepository;
+    private final ApprovalsService approvalsService;
+    private final UserRepository userRepository;
+
 
 
     @Transactional
-    public MaterialRequisitions save(MaterialRequisitionDTO dto, Long companyId, Long branchId) {
-        if(repository.existsByTransactionNumberAndCompanyIdAndBranchId(dto.getTransactionNumber(),companyId,branchId)){
-            throw new DuplicateResourceException("Transaction Number Already exits.");
+    public MaterialRequisitions save(MaterialRequisitionDTO dto, Long companyId, Long branchId, String createdBy) {
+        if (repository.existsByTransactionNumberAndCompanyIdAndBranchId(dto.getTransactionNumber(), companyId, branchId)) {
+            throw new DuplicateResourceException("Transaction Number Already exists.");
         }
+
         Warehouse warehouse = warehouseRepository.findById(dto.getWarehouseId())
                 .orElseThrow(() -> new RuntimeException("Warehouse not found"));
 
@@ -38,7 +45,6 @@ public class MaterialRequisitionService {
                 .type(dto.getType())
                 .companyId(companyId)
                 .branchId(branchId)
-                .status(RequisitionStatus.PENDING)
                 .warehouse(warehouse)
                 .items(new ArrayList<>())
                 .build();
@@ -52,15 +58,53 @@ public class MaterialRequisitionService {
                         .type(itemDTO.getType())
                         .requisition(requisitions)
                         .build();
-
                 requisitions.getItems().add(item);
             }
         }
 
-        log.info("Saving material requisition with transactionNumber={} for companyId={}, branchId={}",
-                dto.getTransactionNumber(), companyId, branchId);
+        MaterialRequisitions saved = repository.save(requisitions);
 
-        return repository.save(requisitions);
+        // ✅ Find approver: ADMIN of PRODUCTION
+        String approverUsername = userRepository
+                .findFirstByRoleAndDepartment(Role.ADMIN, "Production")
+                .map(User::getUsername)
+                .orElseThrow(() -> new RuntimeException("Approver not found for PRODUCTION department"));
+
+        // ✅ Create metadata
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("Transaction Number", saved.getTransactionNumber());
+        meta.put("Type", saved.getType());
+        meta.put("Warehouse", warehouse.getName());
+        meta.put("Requested Items", saved.getItems().stream().map(item ->
+                Map.of(
+                        "Code", item.getCode(),
+                        "Name", item.getName(),
+                        "Qty", item.getQuantity(),
+                        "Type", item.getType()
+                )
+        ).collect(Collectors.toList()));
+
+        String metaDataJson;
+        try {
+            metaDataJson = new ObjectMapper().writeValueAsString(meta);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize metadata", e);
+        }
+
+        // ✅ Create approval request with metadata
+        approvalsService.requestApproval(
+                ReferenceType.MATERIAL_REQUISITION,
+                saved.getId(),
+                createdBy,
+                approverUsername,
+                companyId,
+                branchId,
+                metaDataJson
+        );
+
+        log.info("Saved material requisition and triggered approval to {}", approverUsername);
+
+        return saved;
     }
 
     public List<RequisitionSummaryDTO> getRecent(Long companyId, Long branchId) {
@@ -108,12 +152,16 @@ public class MaterialRequisitionService {
     }
 
     public List<String> getAllTransactionNumber(Long companyId, Long branchId) {
-        return repository.findByCompanyIdAndBranchIdAndStatusIn(companyId, branchId, List.of(RequisitionStatus.PARTIALLY_ISSUED,RequisitionStatus.PENDING))
-
-                .stream()
+        return repository.findByCompanyIdAndBranchIdAndStatusInAndApprovalStatus(
+                        companyId,
+                        branchId,
+                        List.of(RequisitionStatus.PARTIALLY_ISSUED, RequisitionStatus.PENDING),
+                        ApprovalStatus.APPROVED
+                ).stream()
                 .map(MaterialRequisitions::getTransactionNumber)
                 .toList();
     }
+
 
 //    public List<RequestedItemDTO> getItemsByTransactionNumber(String transactionNumber, Long companyId, Long branchId) {
 //        MaterialRequisitions requisition = repository
@@ -141,7 +189,7 @@ public class MaterialRequisitionService {
         List<GroupedItemDTO> individualItems = new ArrayList<>();
 
         for (MaterialRequisitionItem item : requisition.getItems()) {
-            if (item.getIsIssued()) continue; // ✅ skip already issued items
+            // Removed: if (item.getIsIssued()) continue;
 
             int requestedQty = item.getQuantity();
 
@@ -170,7 +218,7 @@ public class MaterialRequisitionService {
 
         // Handle BOMs
         for (MaterialRequisitionItem item : requisition.getItems()) {
-            if (item.getIsIssued()) continue; // ✅ skip already issued BOMs
+            // Removed: if (item.getIsIssued()) continue;
 
             if ("bom".equalsIgnoreCase(item.getType())) {
                 int requestedQty = item.getQuantity();
