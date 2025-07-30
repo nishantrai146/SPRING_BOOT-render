@@ -17,9 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -83,19 +81,25 @@ public class MaterialReceiptService {
 
     // Entity → DTO
     private MaterialReceiptDTO toDTO(MaterialReceipt receipt) {
-        MaterialReceiptDTO dto = new MaterialReceiptDTO();
-        dto.setMode(receipt.getMode());
-        dto.setVendor(receipt.getVendor());
-        dto.setVendorCode(receipt.getVendorCode());
-        dto.setItems(receipt.getItems().stream().map(item -> {
-            MaterialReceiptItemDTO i = new MaterialReceiptItemDTO();
-            i.setItemName(item.getItemName());
-            i.setItemCode(item.getItemCode());
-            i.setQuantity(item.getQuantity());
-            i.setBatchNo(item.getBatchNo());
-            return i;
-        }).collect(Collectors.toList()));
-        return dto;
+        List<MaterialReceiptItemDTO> itemDTOs = receipt.getItems().stream().map(item -> {
+            MaterialReceiptItemDTO.MaterialReceiptItemDTOBuilder builder = MaterialReceiptItemDTO.builder()
+                    .itemCode(item.getItemCode())
+                    .itemName(item.getItemName())
+                    .quantity(item.getQuantity())
+                    .batchNo(item.getBatchNo())
+                    .isIssued(item.isIssued())
+                    .isInventory(item.getWarehouse() != null)
+                    .warehouseId(item.getWarehouse() != null ? item.getWarehouse().getId() : null);
+
+            return builder.build();
+        }).toList();
+
+        return MaterialReceiptDTO.builder()
+                .vendor(receipt.getVendor())
+                .vendorCode(receipt.getVendorCode())
+                .mode(receipt.getMode())
+                .items(itemDTOs)
+                .build();
     }
 
     @Transactional
@@ -696,6 +700,26 @@ public class MaterialReceiptService {
                 .map(User::getUsername)
                 .orElseThrow(() -> new RuntimeException("No approver found for department: " + department));
     }
+    public Map<String, Object> getItemsByDate(LocalDate date, Long companyId, Long branchId) {
+        List<MaterialReceiptItem> items = materialReceiptItemRepository
+                .findByReceiptDateAndCompanyIdAndBranchId(date, companyId, branchId);
+
+        List<MaterialReceiptItemInfoDTO> dtoList = items.stream().map(item -> {
+            MaterialReceipt receipt = item.getReceipt();  // from MaterialReceiptItem
+            return new MaterialReceiptItemInfoDTO(
+                    receipt.getVendorCode(),
+                    receipt.getVendor(),
+                    item.getItemCode(),
+                    item.getItemName()
+            );
+        }).collect(Collectors.toList());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("items", dtoList);
+        result.put("count", dtoList.size());
+        return result;
+    }
+
 
 
 }

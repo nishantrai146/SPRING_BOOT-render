@@ -36,5 +36,15 @@ public class WipReturnController {
         return new ApiResponse<>(true, "Recent WIP return summary", summaryList);
     }
 
+    @GetMapping("/count-defective")
+    public ResponseEntity<ApiResponse<Long>> countDefectiveReturns(
+            @RequestAttribute Long companyId,
+            @RequestAttribute Long branchId
+    ) {
+        long count = wipReturnService.countDefectiveReturns(companyId, branchId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Defective WIP Returns count fetched", count));
+    }
+
+
 
 }

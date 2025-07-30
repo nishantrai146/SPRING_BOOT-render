@@ -4,10 +4,13 @@
     import com.lit.ims.response.ApiResponse;
     import com.lit.ims.service.MaterialReceiptService;
     import lombok.RequiredArgsConstructor;
+    import org.springframework.format.annotation.DateTimeFormat;
     import org.springframework.http.ResponseEntity;
     import org.springframework.web.bind.annotation.*;
 
+    import java.time.LocalDate;
     import java.util.List;
+    import java.util.Map;
 
     @RestController
     @RequestMapping("/api/receipt")
@@ -134,6 +137,16 @@
                 @RequestAttribute("companyId") Long companyId,
                 @RequestAttribute("branchId") Long branchId) {
             return receiptService.getIqcStatusCounts(companyId, branchId);
+        }
+
+        @GetMapping("/items-by-date")
+        public ResponseEntity<ApiResponse<Map<String, Object>>> getItemsByDate(
+                @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                @RequestAttribute Long companyId,
+                @RequestAttribute Long branchId
+        ) {
+            Map<String, Object> result = receiptService.getItemsByDate(date, companyId, branchId);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Items fetched successfully", result));
         }
 
 
