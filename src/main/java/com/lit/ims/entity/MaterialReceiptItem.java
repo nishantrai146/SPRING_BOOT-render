@@ -68,4 +68,9 @@ public class MaterialReceiptItem {
     @JoinColumn(name = "warehouse_id")
     private Warehouse warehouse;
 
+    private Boolean adjustmentRequest;
+    private Integer adjustedQuantity;
+    private String adjustmentReason;
+
+
 }

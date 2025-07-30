@@ -29,6 +29,9 @@ public interface MaterialReceiptItemRepository extends JpaRepository<MaterialRec
     boolean existsByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(String batchNo,
                                                                    Long companyId,
                                                                    Long branchId);
+    Optional<MaterialReceiptItem> findByItemCodeAndReceipt_CompanyIdAndReceipt_BranchId(String itemCode, Long companyId, Long branchId);
+    List<MaterialReceiptItem> findByReceiptId(Long receiptId);
+
 
 
 

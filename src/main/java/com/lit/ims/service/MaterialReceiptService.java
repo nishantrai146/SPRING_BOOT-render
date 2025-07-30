@@ -2,6 +2,8 @@ package com.lit.ims.service;
 
 import com.lit.ims.dto.*;
 import com.lit.ims.entity.*;
+import com.lit.ims.enums.ApprovalStatus;
+import com.lit.ims.enums.ReferenceType;
 import com.lit.ims.exception.ResourceNotFoundException;
 import com.lit.ims.repository.*;
 import com.lit.ims.response.ApiResponse;
@@ -37,6 +39,8 @@ public class MaterialReceiptService {
     private final StockTransactionLogService stockTransactionLogService;
     private final InventoryStockService inventoryStockService;
     private final WarehouseTransferLogService warehouseTransferLogService;
+    private final ApprovalsRepository approvalsRepository;
+    private final UserRepository userRepository;
 
     private Integer fetchItemQuantity(String itemCode, Long companyId, Long branchId) {
         return itemRepository.findByCodeAndCompanyIdAndBranchId(itemCode, companyId, branchId)
@@ -641,6 +645,56 @@ public class MaterialReceiptService {
 
         IqcStatusCountDTO dto = new IqcStatusCountDTO(pendingCount, passCount, failCount);
         return new ApiResponse<>(true, "IQC status counts fetched successfully", dto);
+    }
+
+    public void raiseAdjustmentRequest(AdjustmentRequestDTO dto, Long companyId, Long branchId, String username) {
+        String itemCode = dto.getItemCode();
+
+        // 1. Find MaterialReceiptItem
+        MaterialReceiptItem item = materialReceiptItemRepository
+                .findByItemCodeAndReceipt_CompanyIdAndReceipt_BranchId(itemCode, companyId, branchId)
+                .orElseThrow(() -> new RuntimeException("Item not found"));
+
+        // 2. Prevent duplicate requests
+        if (Boolean.TRUE.equals(item.getAdjustmentRequest())) {
+            throw new RuntimeException("An adjustment request is already pending for this item.");
+        }
+
+        // 3. Update item with adjustment details and lock
+        item.setAdjustmentRequest(true);
+        item.setAdjustedQuantity(dto.getAdjustedQuantity());
+        item.setAdjustmentReason(dto.getReason());
+        item.setAdjustmentLocked(true); // 🟢 Ensure locking is applied
+
+        materialReceiptItemRepository.saveAndFlush(item);
+
+        // 4. Build metadata safely
+        String metaData = String.format(
+                "BatchNo: %s, Requested Qty: %s",
+                item.getBatchNo() != null ? item.getBatchNo() : "N/A",
+                dto.getAdjustedQuantity() != null ? dto.getAdjustedQuantity() : "N/A"
+        );
+
+        // 5. Create approval request
+        Approvals approval = Approvals.builder()
+                .companyId(companyId)
+                .branchId(branchId)
+                .referenceType(ReferenceType.STOCK_ADJUSTMENT)
+                .referenceId(item.getId())
+                .requestedBy(username)
+                .requestedTo(findApprover("store"))
+                .status(ApprovalStatus.PENDING)
+                .remarks(dto.getReason())
+                .metaData(metaData)
+                .build();
+
+        approvalsRepository.save(approval);
+    }
+
+    private String findApprover(String department) {
+        return userRepository.findFirstByRoleAndDepartment(Role.ADMIN, "store")
+                .map(User::getUsername)
+                .orElseThrow(() -> new RuntimeException("No approver found for department: " + department));
     }
 
 

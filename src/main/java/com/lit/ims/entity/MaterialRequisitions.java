@@ -1,6 +1,7 @@
 package com.lit.ims.entity;
 
 import com.lit.ims.entity.RequisitionStatus;
+import com.lit.ims.enums.ApprovalStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -32,16 +33,30 @@ public class MaterialRequisitions {
     @JoinColumn(name = "warehouse_id")
     private Warehouse warehouse;
 
+//    @PrePersist
+//    protected void onCreate() {
+//        this.createdAt = LocalDateTime.now();
+//        if (this.status == null) {
+//            this.status = RequisitionStatus.PENDING;
+//        }
+//    }
+
+    private Long companyId;
+    private Long branchId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ApprovalStatus approvalStatus;
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         if (this.status == null) {
             this.status = RequisitionStatus.PENDING;
         }
+        if (this.approvalStatus == null) {
+            this.approvalStatus = ApprovalStatus.PENDING;
+        }
     }
-
-    private Long companyId;
-    private Long branchId;
 
     @OneToMany(mappedBy = "requisition", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MaterialRequisitionItem> items;

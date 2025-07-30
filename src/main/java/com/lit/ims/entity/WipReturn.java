@@ -1,6 +1,7 @@
 package com.lit.ims.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.lit.ims.enums.ApprovalStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -41,4 +42,8 @@ public class WipReturn {
 
     @OneToMany(mappedBy = "wipReturn", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WipReturnItem> returnItems;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status")
+    private ApprovalStatus approvalStatus;
 }
