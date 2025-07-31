@@ -4,8 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lit.ims.dto.*;
 import com.lit.ims.entity.*;
+import com.lit.ims.entity.RequisitionStatus;
 import com.lit.ims.enums.ApprovalStatus;
 import com.lit.ims.enums.ReferenceType;
+import com.lit.ims.entity.Role;
 import com.lit.ims.exception.DuplicateResourceException;
 import com.lit.ims.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +30,7 @@ public class MaterialRequisitionService {
     private final WarehouseRepository warehouseRepository;
     private final ApprovalsService approvalsService;
     private final UserRepository userRepository;
-
-
+    private final IssuedBatchItemsRepository issuedBatchItemsRepository;
 
     @Transactional
     public MaterialRequisitions save(MaterialRequisitionDTO dto, Long companyId, Long branchId, String createdBy) {
@@ -64,13 +65,11 @@ public class MaterialRequisitionService {
 
         MaterialRequisitions saved = repository.save(requisitions);
 
-        // ✅ Find approver: ADMIN of PRODUCTION
         String approverUsername = userRepository
                 .findFirstByRoleAndDepartment(Role.ADMIN, "Production")
                 .map(User::getUsername)
                 .orElseThrow(() -> new RuntimeException("Approver not found for PRODUCTION department"));
 
-        // ✅ Create metadata
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("Transaction Number", saved.getTransactionNumber());
         meta.put("Type", saved.getType());
@@ -91,7 +90,6 @@ public class MaterialRequisitionService {
             throw new RuntimeException("Failed to serialize metadata", e);
         }
 
-        // ✅ Create approval request with metadata
         approvalsService.requestApproval(
                 ReferenceType.MATERIAL_REQUISITION,
                 saved.getId(),
@@ -162,38 +160,30 @@ public class MaterialRequisitionService {
                 .toList();
     }
 
-
-//    public List<RequestedItemDTO> getItemsByTransactionNumber(String transactionNumber, Long companyId, Long branchId) {
-//        MaterialRequisitions requisition = repository
-//                .findByTransactionNumberAndCompanyIdAndBranchId(transactionNumber, companyId, branchId)
-//                .orElseThrow(() -> new RuntimeException("Requisition not found"));
-//
-//        return requisition.getItems().stream().map(item -> {
-//            RequestedItemDTO dto = new RequestedItemDTO();
-//            dto.setName(item.getName());
-//            dto.setCode(item.getCode());
-//            dto.setType(item.getType());
-//            dto.setQuantity(item.getQuantity());
-//            return dto;
-//        }).toList();
-//    }
-
     public List<GroupedItemGroupDTO> getFullItemsByTransactionNumber(String transactionNumber, Long companyId, Long branchId) {
         MaterialRequisitions requisition = repository
                 .findByTransactionNumberAndCompanyIdAndBranchId(transactionNumber, companyId, branchId)
                 .orElseThrow(() -> new RuntimeException("Requisition not found"));
 
-        List<GroupedItemGroupDTO> groupedItems = new ArrayList<>();
+        // Fetch issued quantity per itemCode
+        List<IssueQuantityDTO> issuedQuantities = issuedBatchItemsRepository
+                .getIssuedQuantityData(transactionNumber, companyId, branchId);
 
-        // Handle individual items
+        Map<String, Double> issuedQtyMap = issuedQuantities.stream()
+                .collect(Collectors.toMap(IssueQuantityDTO::getItemCode, IssueQuantityDTO::getTotalIssuedQty));
+
+        List<GroupedItemGroupDTO> groupedItems = new ArrayList<>();
         List<GroupedItemDTO> individualItems = new ArrayList<>();
 
+        // Handle individual items
         for (MaterialRequisitionItem item : requisition.getItems()) {
-            // Removed: if (item.getIsIssued()) continue;
-
-            int requestedQty = item.getQuantity();
-
             if ("item".equalsIgnoreCase(item.getType())) {
+                int requestedQty = item.getQuantity();
+                double issuedQty = issuedQtyMap.getOrDefault(item.getCode(), 0.0);
+                int remainingQty = requestedQty - (int) issuedQty;
+
+                if (remainingQty <= 0) continue;
+
                 Item itemMaster = itemRepository.findByCode(item.getCode()).orElse(null);
 
                 individualItems.add(GroupedItemDTO.builder()
@@ -201,7 +191,7 @@ public class MaterialRequisitionService {
                         .name(itemMaster != null ? itemMaster.getName() : item.getName())
                         .uom(itemMaster != null ? itemMaster.getUom() : null)
                         .group(itemMaster != null ? itemMaster.getGroupName() : null)
-                        .quantityRequested(requestedQty)
+                        .quantityRequested(remainingQty)
                         .stQuantity(itemMaster != null ? itemMaster.getStQty() : 0)
                         .build());
             }
@@ -218,8 +208,6 @@ public class MaterialRequisitionService {
 
         // Handle BOMs
         for (MaterialRequisitionItem item : requisition.getItems()) {
-            // Removed: if (item.getIsIssued()) continue;
-
             if ("bom".equalsIgnoreCase(item.getType())) {
                 int requestedQty = item.getQuantity();
                 BOM bom = bomRepository.findByCode(item.getCode())
@@ -235,12 +223,17 @@ public class MaterialRequisitionService {
                     int qtyPerUnit = bomItemQty != null ? bomItemQty.intValue() : 0;
                     int totalQty = qtyPerUnit * requestedQty;
 
+                    long issuedQty = Math.round(issuedQtyMap.getOrDefault(bomItem.getItemCode(), 0.0));
+                    int remainingQty = totalQty - (int) issuedQty;
+
+                    if (remainingQty <= 0) continue;
+
                     bomItemList.add(GroupedItemDTO.builder()
                             .code(bomItem.getItemCode())
                             .name(bomItemMaster != null ? bomItemMaster.getName() : bomItem.getItemName())
                             .uom(bomItemMaster != null ? bomItemMaster.getUom() : bomItem.getUom())
                             .group(bomItemMaster != null ? bomItemMaster.getGroupName() : null)
-                            .quantityRequested(totalQty)
+                            .quantityRequested(remainingQty)
                             .stQuantity(bomItemMaster != null ? bomItemMaster.getStQty() : 0)
                             .build());
                 }
@@ -258,6 +251,4 @@ public class MaterialRequisitionService {
 
         return groupedItems;
     }
-
-
 }
