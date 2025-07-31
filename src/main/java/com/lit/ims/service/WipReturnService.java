@@ -6,10 +6,8 @@ import com.lit.ims.entity.*;
 import com.lit.ims.enums.ApprovalStage;
 import com.lit.ims.enums.ApprovalStatus;
 import com.lit.ims.enums.ReferenceType;
-import com.lit.ims.repository.ApprovalsRepository;
-import com.lit.ims.repository.BatchSequenceTrackerRepository;
-import com.lit.ims.repository.UserRepository;
-import com.lit.ims.repository.WipReturnRepository;
+import com.lit.ims.enums.WipReturnStatus;
+import com.lit.ims.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,10 +28,15 @@ public class WipReturnService {
     private final BatchSequenceTrackerRepository trackerRepository;
     private final ApprovalsRepository approvalsRepository;
     private final UserRepository userRepository;
+    private final ProductionReceiptRepository productionReceiptRepository;
 
 
     @Transactional
     public WipReturn saveWipReturn(WipReturnDTO dto, Long companyId, Long branchId, String username) {
+        ProductionReceipt receipt = productionReceiptRepository
+                .findByTransactionNumberAndCompanyIdAndBranchId(
+                        dto.getReceiptNumber(), companyId, branchId)
+                .orElseThrow(() -> new RuntimeException("Production receipt not found"));
         WipReturn wipReturn = WipReturn.builder()
                 .transactionNumber(dto.getTransactionNumber())
                 .returnType(dto.getReturnType())
@@ -133,6 +136,9 @@ public class WipReturnService {
                 .build();
 
         approvalsRepository.save(approval);
+        receipt.setWipReturnStatus(WipReturnStatus.APPROVED);
+        productionReceiptRepository.save(receipt);
+
 
         return savedReturn;
     }

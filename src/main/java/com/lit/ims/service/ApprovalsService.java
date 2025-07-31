@@ -8,6 +8,8 @@ import com.lit.ims.enums.ApprovalStatus;
 import com.lit.ims.enums.ReferenceType;
 import com.lit.ims.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -18,6 +20,7 @@ import java.util.stream.Collectors;
 
 import static com.lit.ims.enums.ReferenceType.WIP_RETURN;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ApprovalsService {
@@ -31,9 +34,17 @@ public class ApprovalsService {
     private final MaterialReceiptRepository materialReceiptRepository;
     private final InventoryStockService inventoryStockService;
     private final WarehouseRepository warehouseRepository;
+    @Autowired
+    private InventoryStockRepository inventoryStockRepository;
+
+    @Autowired
+    private StockTransactionLogService stockTransactionLogService;
+
+    @Autowired
+    private WarehouseTransferLogService warehouseTransferLogService;
 
 
-    public void requestApproval(ReferenceType referenceType, Long referenceId, String requestedBy, String requestedTo, Long companyId, Long branchId,String metaData) {
+    public void requestApproval(ReferenceType referenceType, Long referenceId, String requestedBy, String requestedTo, Long companyId, Long branchId, String metaData) {
         Approvals approval = Approvals.builder()
                 .referenceType(referenceType)
                 .referenceId(referenceId)
@@ -55,6 +66,122 @@ public class ApprovalsService {
 //                .collect(Collectors.toList());
 //    }
 
+    //    public void takeAction(Long approvalId, ApprovalStatus status, String remarks, String currentUsername) {
+//        Approvals approval = repository.findById(approvalId)
+//                .orElseThrow(() -> new RuntimeException("Approval not found"));
+//
+//        // Fetch current user details (to check role)
+//        User currentUser = userRepository.findByUsername(currentUsername)
+//                .orElseThrow(() -> new RuntimeException("User not found"));
+//
+//        // Only requested user or an ADMIN (e.g., OWNER) can approve
+//        boolean isApprover = approval.getRequestedTo().equalsIgnoreCase(currentUsername);
+//        boolean isAdminOrOwner = currentUser.getRole() == Role.ADMIN || currentUser.getRole() == Role.OWNER;
+//
+//        if (!isApprover && !isAdminOrOwner) {
+//            throw new RuntimeException("You are not authorized to take action on this approval.");
+//        }
+//
+//        // Update approval entity
+//        approval.setStatus(status);
+//        approval.setRemarks(remarks);
+//        approval.setActionDate(LocalDateTime.now());
+//        repository.save(approval);
+//
+//        // Handle each type
+//        switch (approval.getReferenceType()) {
+//
+//            case MATERIAL_REQUISITION -> {
+//                materialRequisitionRepository.findById(approval.getReferenceId())
+//                        .ifPresent(req -> {
+//                            req.setApprovalStatus(status);
+//                            materialRequisitionRepository.save(req);
+//                        });
+//            }
+//
+//            case MATERIAL_RECEIPT -> {
+//                if (status == ApprovalStatus.APPROVED) {
+//                    List<MaterialReceiptItem> items = materialReceiptItemRepository
+//                            .findByReceiptId(approval.getReferenceId());
+//                    for (MaterialReceiptItem item : items) {
+//                        item.setAdjustmentLocked(false); // release lock
+//                    }
+//                    materialReceiptItemRepository.saveAll(items);
+//                }
+//            }
+//
+//            case STOCK_ADJUSTMENT -> {
+//                materialReceiptItemRepository.findById(approval.getReferenceId())
+//                        .ifPresent(item -> {
+//                            boolean isApproved = status == ApprovalStatus.APPROVED;
+//                            item.setAdjustmentRequest(false);
+//                            item.setAdjustmentLocked(!isApproved); // lock if rejected
+//                            materialReceiptItemRepository.save(item);
+//                        });
+//            }
+//
+//            case WIP_RETURN -> {
+//                WipReturn wipReturn = wipReturnRepository.findById(approval.getReferenceId())
+//                        .orElseThrow(() -> new RuntimeException("WIP Return not found"));
+//
+//                if (status == ApprovalStatus.REJECTED) {
+//                    wipReturn.setApprovalStatus(ApprovalStatus.REJECTED);
+//                    wipReturnRepository.save(wipReturn);
+//                    break;
+//                }
+//
+//                if (approval.getStage() == ApprovalStage.PRODUCTION_HEAD) {
+//                    Approvals storeApproval = Approvals.builder()
+//                            .referenceType(WIP_RETURN)
+//                            .referenceId(wipReturn.getId())
+//                            .requestedBy(currentUsername)
+//                            .requestedTo(findApprover("STORE", Role.ADMIN, approval.getCompanyId(), approval.getBranchId()))
+//                            .status(ApprovalStatus.PENDING)
+//                            .companyId(approval.getCompanyId())
+//                            .branchId(approval.getBranchId())
+//                            .requestedDate(LocalDateTime.now())
+//                            .stage(ApprovalStage.STORE_HEAD)
+//                            .metaData(approval.getMetaData())
+//                            .build();
+//                    repository.save(storeApproval);
+//                } else if (approval.getStage() == ApprovalStage.STORE_HEAD) {
+//                    wipReturn.setApprovalStatus(ApprovalStatus.APPROVED);
+//                    wipReturnRepository.save(wipReturn);
+//
+//                    // ✅ Create Material Receipt
+//                    MaterialReceipt receipt = MaterialReceipt.builder()
+//                            .mode("WIP_RETURN")
+//                            .vendor("Internal")
+//                            .vendorCode("INTERNAL")
+//                            .companyId(wipReturn.getCompanyId())
+//                            .branchId(wipReturn.getBranchId())
+//                            .build();
+//
+//                    List<MaterialReceiptItem> receiptItems = new ArrayList<>();
+//                    for (WipReturnItem item : wipReturn.getReturnItems()) {
+//                        MaterialReceiptItem receiptItem = MaterialReceiptItem.builder()
+//                                .itemCode(item.getItemCode().toString())
+//                                .itemName(item.getItemName())
+//                                .quantity(item.getReturnQty())
+//                                .batchNo(item.getNewBatchNo()) // ✅ use existing batch number
+//                                .receipt(receipt)
+//                                .qcStatus("PENDING") // or your logic
+//                                .isIssued(false)
+//                                .warehouse(Warehouse.builder().id(wipReturn.getWarehouseId()).build())
+//                                .build();
+//                        receiptItems.add(receiptItem);
+//                    }
+//
+//                    receipt.setItems(receiptItems);
+//                    materialReceiptRepository.save(receipt);
+//
+//                }
+//
+//            }
+//
+//            default -> throw new RuntimeException("Unsupported reference type: " + approval.getReferenceType());
+//        }
+//    }
     public void takeAction(Long approvalId, ApprovalStatus status, String remarks, String currentUsername) {
         Approvals approval = repository.findById(approvalId)
                 .orElseThrow(() -> new RuntimeException("Approval not found"));
@@ -152,7 +279,7 @@ public class ApprovalsService {
                                 .itemCode(item.getItemCode().toString())
                                 .itemName(item.getItemName())
                                 .quantity(item.getReturnQty())
-                                .batchNo(item.getNewBatchNo()) // ✅ use existing batch number
+                                .batchNo(item.getNewBatchNo()) // use existing batch number
                                 .receipt(receipt)
                                 .qcStatus("PENDING") // or your logic
                                 .isIssued(false)
@@ -164,6 +291,85 @@ public class ApprovalsService {
                     receipt.setItems(receiptItems);
                     materialReceiptRepository.save(receipt);
 
+                    // ====== NEW: Inventory + StockTransaction + WarehouseTransfer logic ======
+
+                    // Get store warehouse (where items are returned)
+                    Warehouse storeWarehouse = warehouseRepository.findByTypeAndCompanyIdAndBranchId(
+                                    WarehouseType.STR, wipReturn.getCompanyId(), wipReturn.getBranchId())
+                            .orElseThrow(() -> new RuntimeException("Store warehouse not found"));
+
+                    // Get source warehouse (from WIP Return)
+                    Warehouse sourceWarehouse = warehouseRepository.findById(wipReturn.getWarehouseId())
+                            .orElseThrow(() -> new RuntimeException("Source warehouse not found"));
+
+
+                    for (WipReturnItem item : wipReturn.getReturnItems()) {
+                        String itemCode = item.getItemCode().toString();
+                        String itemName = item.getItemName();
+                        int qty = item.getReturnQty() != null ? item.getReturnQty() : 0;
+                        if (qty <= 0) continue;
+
+                        // Increase stock in store warehouse
+                        InventoryStock storeStock = inventoryStockRepository
+                                .findByItemCodeAndWarehouseIdAndCompanyIdAndBranchId(
+                                        itemCode, storeWarehouse.getId(), wipReturn.getCompanyId(), wipReturn.getBranchId())
+                                .orElse(InventoryStock.builder()
+                                        .itemCode(itemCode)
+                                        .itemName(itemName)
+                                        .warehouse(storeWarehouse)
+                                        .companyId(wipReturn.getCompanyId())
+                                        .branchId(wipReturn.getBranchId())
+                                        .quantity(0)
+                                        .build());
+                        storeStock.setQuantity(storeStock.getQuantity() + qty);
+                        inventoryStockRepository.save(storeStock);
+
+                        // Decrease stock from source warehouse
+                        InventoryStock sourceStock = inventoryStockRepository
+                                .findByItemCodeAndWarehouseIdAndCompanyIdAndBranchId(
+                                        itemCode, sourceWarehouse.getId(), wipReturn.getCompanyId(), wipReturn.getBranchId())
+                                .orElseThrow(() -> new RuntimeException("No inventory found for item " + itemCode + " in source warehouse"));
+                        if (sourceStock.getQuantity() < qty) {
+                            throw new IllegalStateException("Insufficient stock in source warehouse for item " + itemCode);
+                        }
+                        sourceStock.setQuantity(sourceStock.getQuantity() - qty);
+                        inventoryStockRepository.save(sourceStock);
+
+                        // Log stock addition to store warehouse
+                        stockTransactionLogService.logTransaction(
+                                itemCode, itemName, qty,
+                                "WIP_RETURN_APPROVAL", "WIP_RETURN", wipReturn.getId(),
+                                wipReturn.getCompanyId(), wipReturn.getBranchId(),
+                                storeWarehouse, currentUsername
+                        );
+
+                        // Log stock reduction from source warehouse
+                        stockTransactionLogService.logTransaction(
+                                itemCode, itemName, -qty,
+                                "WIP_RETURN_APPROVAL", "WIP_RETURN", wipReturn.getId(),
+                                wipReturn.getCompanyId(), wipReturn.getBranchId(),
+                                sourceWarehouse, currentUsername
+                        );
+
+                        // Log warehouse transfer
+                        warehouseTransferLogService.logTransfer(
+                                itemCode, itemName, qty,
+                                sourceWarehouse.getId(), sourceWarehouse.getName(),
+                                storeWarehouse.getId(), storeWarehouse.getName(),
+                                "WIP_RETURN_APPROVAL", "WIP_RETURN", wipReturn.getId(),
+                                wipReturn.getCompanyId(), wipReturn.getBranchId(),
+                                currentUsername
+                        );
+
+                        // Update batch warehouse in MaterialReceiptItem
+                        materialReceiptItemRepository.findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(
+                                        item.getNewBatchNo(), wipReturn.getCompanyId(), wipReturn.getBranchId())
+                                .ifPresent(receiptItem -> {
+                                    receiptItem.setWarehouse(storeWarehouse);
+                                    materialReceiptItemRepository.save(receiptItem);
+                                });
+                    }
+                    // ======================================================================
                 }
 
             }
@@ -180,7 +386,6 @@ public class ApprovalsService {
     }
 
 
-
     private ApprovalsDTO toDTO(Approvals a) {
         return ApprovalsDTO.builder()
                 .id(a.getId())
@@ -194,6 +399,7 @@ public class ApprovalsService {
                 .actionDate(a.getActionDate())
                 .build();
     }
+
     public List<ApprovalsDTO> getMyApprovals(String username, Long companyId, Long branchId) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -201,15 +407,16 @@ public class ApprovalsService {
         List<Approvals> approvals;
 
         if (user.getRole() == Role.OWNER) {
-            approvals = approvalsRepository.findByCompanyIdAndBranchId(companyId, branchId);
+            approvals = approvalsRepository.findByCompanyIdAndBranchIdAndStatus(companyId, branchId, ApprovalStatus.PENDING);
         } else {
-            approvals = approvalsRepository.findByRequestedToAndCompanyIdAndBranchId(username, companyId, branchId);
+            approvals = approvalsRepository.findByRequestedToAndCompanyIdAndBranchIdAndStatus(username, companyId, branchId, ApprovalStatus.PENDING);
         }
 
         return approvals.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
+
 
     private ApprovalsDTO convertToDto(Approvals approvals) {
         return ApprovalsDTO.builder()
@@ -225,6 +432,7 @@ public class ApprovalsService {
                 .metaData(approvals.getMetaData())
                 .build();
     }
+
     public void createStockAdjustmentApproval(StockAdjustmentApprovalDTO dto, String requestedBy, Long companyId, Long branchId) {
         MaterialReceiptItem item = materialReceiptItemRepository
                 .findByBatchNoAndReceipt_CompanyIdAndReceipt_BranchId(dto.getBatchNo(), companyId, branchId)
@@ -276,7 +484,6 @@ public class ApprovalsService {
                 .map(User::getUsername)
                 .orElseThrow(() -> new RuntimeException("No approver (ADMIN for INVENTORY) found"));
     }
-
 
 
 }

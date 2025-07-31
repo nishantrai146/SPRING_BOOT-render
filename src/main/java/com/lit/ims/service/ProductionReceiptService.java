@@ -3,6 +3,7 @@ package com.lit.ims.service;
 
 import com.lit.ims.dto.*;
 import com.lit.ims.entity.*;
+import com.lit.ims.enums.WipReturnStatus;
 import com.lit.ims.repository.IssuedBatchItemsRepository;
 import com.lit.ims.repository.ProductionReceiptRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class ProductionReceiptService {
                 .branchId(branchId)
                 .createdBy(username)
                 .type(issue.getType())
+                .wipReturnStatus(WipReturnStatus.PENDING)
                 .build();
 
         // -- build receipt rows --
@@ -137,7 +139,7 @@ public class ProductionReceiptService {
 
     @Transactional(readOnly = true)
     public List<ReceiptIdNumberDTO> getAllReceiptIdAndNumbers(Long companyId, Long branchId) {
-        return receiptRepo.findByCompanyIdAndBranchIdOrderByReceiptDateDesc(companyId, branchId)
+        return receiptRepo.findByCompanyIdAndBranchIdAndWipReturnStatus(companyId, branchId,WipReturnStatus.PENDING)
                 .stream()
                 .map(r -> new ReceiptIdNumberDTO(r.getId(), r.getTransactionNumber()))
                 .toList();

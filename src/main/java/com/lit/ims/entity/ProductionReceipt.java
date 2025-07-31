@@ -1,6 +1,8 @@
 package com.lit.ims.entity;
 
 
+import com.lit.ims.enums.ApprovalStatus;
+import com.lit.ims.enums.WipReturnStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,4 +36,8 @@ public class ProductionReceipt {
 
     @Enumerated(EnumType.STRING)
     private IssueStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "wip_return_status")
+    private WipReturnStatus wipReturnStatus;
 }
