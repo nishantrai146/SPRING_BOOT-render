@@ -172,4 +172,11 @@ public class WipReturnService {
             return response;
         }).toList();
     }
+
+    public long countDefectiveReturns(Long companyId, Long branchId) {
+        return wipReturnRepository.countDefectiveReturns(
+                companyId, branchId
+        );
+    }
+
 }
