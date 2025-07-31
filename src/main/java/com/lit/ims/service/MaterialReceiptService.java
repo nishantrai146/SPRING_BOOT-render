@@ -710,7 +710,8 @@ public class MaterialReceiptService {
                     receipt.getVendorCode(),
                     receipt.getVendor(),
                     item.getItemCode(),
-                    item.getItemName()
+                    item.getItemName(),
+                    receipt.getCreatedAt()
             );
         }).collect(Collectors.toList());
 
