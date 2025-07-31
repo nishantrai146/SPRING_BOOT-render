@@ -25,6 +25,7 @@ public class IssueProductionService {
     private final WarehouseRepository warehouseRepository;
     private final InventoryStockRepository inventoryStockRepository;
     private final MaterialReceiptItemRepository materialReceiptItemRepository;
+    private final IssuedBatchItemsRepository issuedBatchItemsRepository;
 
     public IssueProduction saveIssueProduction(IssueProductionDTO dto, Long companyId, Long branchId, String username) {
 
@@ -59,11 +60,13 @@ public class IssueProductionService {
         issue.setBatchItems(batchItems);
         IssueProduction savedIssue = issueProductionRepository.save(issue);
 
-        // 3. Update requisition status (based on issued quantities)
-        Map<String, Double> issuedQtyMap = batchItems.stream()
-                .collect(Collectors.groupingBy(
-                        IssuedBatchItems::getItemCode,
-                        Collectors.summingDouble(batch -> batch.getIssuedQty() != null ? batch.getIssuedQty() : 0.0)
+        // 3. Update requisition status (based on cumulative issued quantities)
+        Map<String, Double> issuedQtyMap = issuedBatchItemsRepository
+                .getIssuedQuantityData(dto.getRequisitionNumber(), companyId, branchId)
+                .stream()
+                .collect(Collectors.toMap(
+                        IssueQuantityDTO::getItemCode,
+                        IssueQuantityDTO::getTotalIssuedQty
                 ));
 
         boolean allFullyIssued = true;
@@ -75,20 +78,17 @@ public class IssueProductionService {
             double totalIssuedQty = issuedQtyMap.getOrDefault(itemCode, 0.0);
 
             if (totalIssuedQty >= requestedQty) {
-                // fully issued
                 anyIssued = true;
             } else if (totalIssuedQty > 0) {
-                // partially issued
                 anyIssued = true;
                 allFullyIssued = false;
             } else {
-                // not issued at all
                 allFullyIssued = false;
             }
         }
 
         if (allFullyIssued) {
-            requisition.setStatus(RequisitionStatus.APPROVED);
+            requisition.setStatus(RequisitionStatus.APPROVED); // or use RequisitionStatus.ISSUED if you prefer
         } else if (anyIssued) {
             requisition.setStatus(RequisitionStatus.PARTIALLY_ISSUED);
         } else {
@@ -96,6 +96,7 @@ public class IssueProductionService {
         }
 
         materialRequisitionRepository.save(requisition);
+
 
         // 4. Get Store warehouse (from where we issue)
         Warehouse storeWarehouse = warehouseRepository.findByTypeAndCompanyIdAndBranchId(WarehouseType.STR, companyId, branchId)
