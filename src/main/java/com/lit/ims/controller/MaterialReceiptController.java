@@ -158,7 +158,7 @@
 
         @GetMapping("/qc-status/attachment/{fileName:.+}")
         public ResponseEntity<Resource> downloadAttachment(@PathVariable String fileName) {
-            Resource resource = fileStorageService.loadFile("iqc_docs/" + fileName);
+            Resource resource = fileStorageService.loadFile( fileName);
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
