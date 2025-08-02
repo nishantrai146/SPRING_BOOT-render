@@ -25,4 +25,5 @@ public class VendorCustomerDTO {
     private String pincode;
     @NotBlank
     private String status;
+    private String country;
 }

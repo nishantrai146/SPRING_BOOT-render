@@ -51,6 +51,7 @@ public class VendorCustomerService {
                 .status(dto.getStatus())
                 .companyId(companyId)
                 .branchId(branchId)
+                .country(dto.getCountry())
                 .build();
 
         VendorCustomer saved = repository.save(vc);
@@ -86,6 +87,7 @@ public class VendorCustomerService {
         vc.setState(dto.getState());
         vc.setAddress(dto.getAddress());
         vc.setPincode(dto.getPincode());
+        vc.setCountry(dto.getCountry());
         vc.setStatus(dto.getStatus());
 
         VendorCustomer updated = repository.save(vc);

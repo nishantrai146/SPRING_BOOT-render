@@ -23,6 +23,7 @@ public class VendorCustomer {
     private String mobile;
     private String email;
     private String address;
+    private String country;
     private String city;
     private String state;
     private String pincode;
