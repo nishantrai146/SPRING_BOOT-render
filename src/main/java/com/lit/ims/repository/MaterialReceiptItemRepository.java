@@ -13,7 +13,9 @@ import java.util.Optional;
 
 @Repository
 public interface MaterialReceiptItemRepository extends JpaRepository<MaterialReceiptItem,Long> {
-    List<MaterialReceiptItem> findByQcStatusAndReceipt_CompanyIdAndReceipt_BranchId(String qcStatus, Long companyId, Long branchId);
+    List<MaterialReceiptItem> findByQcStatusAndReceipt_CompanyIdAndReceipt_BranchIdAndAdjustmentLockedFalse(
+            String qcStatus, Long companyId, Long branchId);
+
     List<MaterialReceiptItem> findByQcStatusInAndReceipt_CompanyIdAndReceipt_BranchId(
             List<String> qcStatuses, Long companyId, Long branchId);
     Optional<MaterialReceiptItem> findByIdAndReceipt_CompanyIdAndReceipt_BranchId(Long id, Long companyId, Long branchId);

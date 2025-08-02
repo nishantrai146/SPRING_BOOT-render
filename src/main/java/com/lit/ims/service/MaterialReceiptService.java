@@ -314,7 +314,7 @@ public class MaterialReceiptService {
     }
 
     public ApiResponse<List<PendingQcItemsDTO>> getPendingQcItems(Long companyId, Long branchId) {
-        List<MaterialReceiptItem> items = materialReceiptItemRepository.findByQcStatusAndReceipt_CompanyIdAndReceipt_BranchId("PENDING", companyId, branchId);
+        List<MaterialReceiptItem> items = materialReceiptItemRepository.findByQcStatusAndReceipt_CompanyIdAndReceipt_BranchIdAndAdjustmentLockedFalse("PENDING", companyId, branchId);
 
         List<PendingQcItemsDTO> result = items.stream().map(item -> {
             PendingQcItemsDTO dto = new PendingQcItemsDTO();

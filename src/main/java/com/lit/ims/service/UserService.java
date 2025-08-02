@@ -44,7 +44,7 @@ public class UserService {
             Branch defaultBranch = branchRepo.findByCodeAndCompanyId("HQ", defaultCompany.getId()).orElseGet(() -> {
                 Branch branch = new Branch();
                 branch.setCode("HQ");
-                branch.setName("Headquarters");
+                branch.setName("A-124,LIT INDIA Pvt Ltd");
                 branch.setAddress("A-124 Sector 80");
                 branch.setPhone("0000000000");
                 branch.setEmail("hq@example.com");
