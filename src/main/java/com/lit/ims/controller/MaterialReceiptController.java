@@ -2,11 +2,16 @@
 
     import com.lit.ims.dto.*;
     import com.lit.ims.response.ApiResponse;
+    import com.lit.ims.service.FileStorageService;
     import com.lit.ims.service.MaterialReceiptService;
+    import org.springframework.core.io.Resource;
     import lombok.RequiredArgsConstructor;
     import org.springframework.format.annotation.DateTimeFormat;
+    import org.springframework.http.HttpHeaders;
+    import org.springframework.http.MediaType;
     import org.springframework.http.ResponseEntity;
     import org.springframework.web.bind.annotation.*;
+
 
     import java.time.LocalDate;
     import java.util.List;
@@ -19,6 +24,7 @@
     public class MaterialReceiptController {
 
         private final MaterialReceiptService receiptService;
+        private final FileStorageService fileStorageService;
 
         // ✅ Save Receipt
         @PostMapping("/save")
@@ -68,16 +74,17 @@
             return ResponseEntity.ok(receiptService.getItemsWithPassOrFail(companyId, branchId));
         }
 
-        @PutMapping("/qc-status/update")
+        @PutMapping(value = "/qc-status/update", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
         public ApiResponse<String> updateQcStatus(
-                @RequestBody UpdateQcStatusDTO dto,
+                @ModelAttribute UpdateQcStatusDTO dto, // <-- FIXED
                 @RequestAttribute("companyId") Long companyId,
                 @RequestAttribute("branchId") Long branchId,
                 @RequestAttribute("username") String username
         ) {
             receiptService.updateQcStatus(dto, companyId, branchId, username);
-            return new ApiResponse<>(true,"QC status updated successfully",null);
+            return new ApiResponse<>(true, "QC status updated successfully", null);
         }
+
 
 
         @GetMapping("/qc/item-by-batch")
@@ -148,6 +155,18 @@
             Map<String, Object> result = receiptService.getItemsByDate(date, companyId, branchId);
             return ResponseEntity.ok(new ApiResponse<>(true, "Items fetched successfully", result));
         }
+
+        @GetMapping("/qc-status/attachment/{fileName:.+}")
+        public ResponseEntity<Resource> downloadAttachment(@PathVariable String fileName) {
+            Resource resource = fileStorageService.loadFile("iqc_docs/" + fileName);
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                    .body(resource);
+        }
+
+
 
 
 

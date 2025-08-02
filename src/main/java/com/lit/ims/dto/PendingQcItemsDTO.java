@@ -17,5 +17,5 @@ public class PendingQcItemsDTO {
     private String status;
     @JsonFormat(pattern = "dd-MM-yyyy hh:mm:ss a")
     private LocalDateTime createdAt;
-
+    private String attachmentFileName;
 }

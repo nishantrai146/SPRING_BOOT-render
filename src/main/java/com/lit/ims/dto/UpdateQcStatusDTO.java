@@ -1,6 +1,7 @@
 package com.lit.ims.dto;
 
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
 @Data
 public class UpdateQcStatusDTO {
@@ -9,4 +10,5 @@ public class UpdateQcStatusDTO {
     private String defectCategory;
     private String remarks;
     private Long warehouseId;
+    private MultipartFile attachment;
 }

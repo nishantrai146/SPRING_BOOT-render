@@ -72,5 +72,9 @@ public class MaterialReceiptItem {
     private Integer adjustedQuantity;
     private String adjustmentReason;
 
+    @Column(name = "attachment_path")
+    private String attachmentPath;
+
+
 
 }

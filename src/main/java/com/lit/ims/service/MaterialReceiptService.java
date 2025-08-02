@@ -39,6 +39,7 @@ public class MaterialReceiptService {
     private final WarehouseTransferLogService warehouseTransferLogService;
     private final ApprovalsRepository approvalsRepository;
     private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
 
     private Integer fetchItemQuantity(String itemCode, Long companyId, Long branchId) {
         return itemRepository.findByCodeAndCompanyIdAndBranchId(itemCode, companyId, branchId)
@@ -349,6 +350,7 @@ public class MaterialReceiptService {
             dto.setVendorCode(item.getReceipt().getVendorCode());
             dto.setCreatedAt(item.getCreatedAt());
             dto.setQuantity(item.getQuantity());
+            dto.setAttachmentFileName(item.getAttachmentPath());
             return dto;
         }).collect(Collectors.toList());
 
@@ -362,6 +364,11 @@ public class MaterialReceiptService {
 
         if (!item.getReceipt().getCompanyId().equals(companyId) || !item.getReceipt().getBranchId().equals(branchId)) {
             throw new RuntimeException("Access denied for company/branch");
+        }
+
+        if (dto.getAttachment() != null && !dto.getAttachment().isEmpty()) {
+            String path = fileStorageService.storeFile(dto.getAttachment(), "iqc_docs");
+            item.setAttachmentPath(path);
         }
 
         // ➤ Get source (IQC) warehouse before updating the item
