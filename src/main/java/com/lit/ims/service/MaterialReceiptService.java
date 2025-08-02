@@ -367,7 +367,7 @@ public class MaterialReceiptService {
         }
 
         if (dto.getAttachment() != null && !dto.getAttachment().isEmpty()) {
-            String path = fileStorageService.storeFile(dto.getAttachment(), "iqc_docs");
+            String path = fileStorageService.storeFile(dto.getAttachment());
             item.setAttachmentPath(path);
         }
 

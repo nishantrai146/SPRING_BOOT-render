@@ -14,18 +14,18 @@ public class FileStorageService {
 
     private final Path rootLocation = Paths.get("uploads").toAbsolutePath().normalize();
 
-    public String storeFile(MultipartFile file, String subfolder) {
+    public String storeFile(MultipartFile file) {
         try {
             String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-            Path subfolderPath = rootLocation.resolve(subfolder);
-            Files.createDirectories(subfolderPath);
-            Path destination = subfolderPath.resolve(fileName);
+            Path destination = rootLocation.resolve(fileName);
+            Files.createDirectories(rootLocation); // Ensure root exists
             Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
-            return subfolder + "/" + fileName;
+            return fileName;
         } catch (IOException e) {
             throw new RuntimeException("Failed to store file " + file.getOriginalFilename(), e);
         }
     }
+
 
     public Resource loadFile(String path) {
         try {
